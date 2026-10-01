@@ -1,0 +1,15 @@
+# entorno y cachés
+.venv/
+__pycache__/
+*.pyc
+
+# audio y vídeo de trabajo
+audio/*
+!audio/.gitkeep
+*.mp4
+*.wav
+*.mp3
+*.m4a
+
+# ffmpeg local en Windows
+ffmpeg.exe
