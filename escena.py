@@ -413,31 +413,125 @@ def dibujar_reflejos(d, reflejos, t_seg, W):
         d.line([(x + dx, y), (x + dx + largo, y)], fill=color, width=ancho)
 
 
-def generar_nenufares(W, H):
-    """Posiciones de las hojas de nenúfar (bajo cada rana) y alguna flor."""
+def _dibujar_hoja_nenufar(s, angulo, lado):
+    """
+    Hoja de nenúfar con su muesca característica (transparente, deja ver el
+    agua de verdad a través) y un par de venas que abren desde ahí. La
+    muesca se abre hacia arriba y un poco hacia `lado` (1 o -1) en vez de
+    justo hacia arriba, porque si no queda tapada por la rana sentada encima.
+    Se dibuja a 2x y se suaviza, igual que el resto del fondo, y se gira un
+    poco: si no, al pintarse nítida cada fotograma sobre un fondo con los
+    bordes suavizados parece una pegatina recortada encima.
+    """
+    w, h = max(1, int(s * SS)), max(1, int(s * 0.42 * SS))
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    verde, sombra = (60, 140, 60), (40, 100, 40)
+    d.ellipse([0, 0, w - 1, h - 1], fill=verde, outline=sombra, width=4 * SS)
+    centro = 310 if lado > 0 else 230
+    d.pieslice([0, 0, w - 1, h - 1], centro - 20, centro + 20, fill=(0, 0, 0, 0))
+    cx, cy = w / 2, h / 2
+    base = centro + 180  # las venas abren desde la muesca hacia el resto de la hoja
+    for off in (-35, 0, 35):
+        ang = math.radians(base + off)
+        d.line([(cx, cy), (cx + math.cos(ang) * w * 0.46, cy + math.sin(ang) * h * 0.42)],
+               fill=sombra, width=max(1, int(1.3 * SS)))
+    img = img.filter(ImageFilter.SMOOTH)
+    img = img.resize((max(1, w // SS), max(1, h // SS)), Image.LANCZOS)
+    return img.rotate(angulo, resample=Image.BICUBIC, expand=True)
+
+
+def _dibujar_flor_nenufar():
+    """Florecita de nenúfar, suavizada igual que las hojas."""
+    r = 14 * SS
+    img = Image.new("RGBA", (r * 2, r * 2), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    for ang in range(0, 360, 45):
+        ra = math.radians(ang)
+        ox, oy = math.cos(ra) * 8 * SS, math.sin(ra) * 4 * SS
+        d.ellipse([r + ox - 6 * SS, r + oy - 3 * SS, r + ox + 6 * SS, r + oy + 3 * SS], fill=(246, 206, 222))
+    d.ellipse([r - 4 * SS, r - 3 * SS, r + 4 * SS, r + 3 * SS], fill=(240, 200, 70))
+    img = img.filter(ImageFilter.SMOOTH)
+    return img.resize((max(1, r * 2 // SS), max(1, r * 2 // SS)), Image.LANCZOS)
+
+
+def generar_nenufares(W, H, semilla=11):
+    """
+    Sprites (ya suavizados y listos para pegar) de las hojas de nenúfar bajo
+    cada rana y alguna flor. Las hojas se giran un poco al azar y se centran
+    más arriba, con margen de sobra para no llegar a tocar la franja de
+    tierra del frente (en vez de apoyar el borde superior ahí, como antes).
+    """
+    rng = random.Random(semilla + 500)
     nenufares = []
-    for cx in X_RANAS:
+    for i, cx in enumerate(X_RANAS):
         s = 0.26 * W
-        nenufares.append(("hoja", cx * W - s / 2, 0.80 * H, s))
+        lado = 1 if i == 0 else -1  # la muesca mira hacia fuera de cada rana, no hacia la otra
+        sprite = _dibujar_hoja_nenufar(s, rng.uniform(-8, 8), lado)
+        y_centro = 0.80 * H
+        nenufares.append((sprite, cx * W - sprite.width / 2, y_centro - sprite.height / 2))
     for fx, fy in ((0.5, 0.88), (0.1, 0.9), (0.9, 0.86)):
-        nenufares.append(("flor", fx * W, fy * H, None))
+        sprite = _dibujar_flor_nenufar()
+        nenufares.append((sprite, fx * W - sprite.width / 2, fy * H - sprite.height / 2))
     return nenufares
 
 
-def dibujar_nenufares(d, nenufares):
-    """Hojas y flores de nenúfar, por delante del brillo del agua."""
-    for tipo, a, b, s in nenufares:
-        if tipo == "hoja":
-            x0, y0 = a, b
-            d.ellipse([x0, y0, x0 + s, y0 + s * 0.42], fill=(60, 140, 60), outline=(40, 100, 40), width=4)
-            d.pieslice([x0, y0, x0 + s, y0 + s * 0.42], 250, 290, fill=(68, 128, 154))
-        else:
-            x, y = a, b
-            for ang in range(0, 360, 45):
-                ra = math.radians(ang)
-                d.ellipse([x + math.cos(ra) * 8 - 6, y + math.sin(ra) * 4 - 3,
-                           x + math.cos(ra) * 8 + 6, y + math.sin(ra) * 4 + 3], fill=(246, 206, 222))
-            d.ellipse([x - 4, y - 3, x + 4, y + 3], fill=(240, 200, 70))
+def dibujar_nenufares(img, nenufares):
+    """Pega las hojas y flores de nenúfar, por delante del brillo del agua."""
+    for sprite, x, y in nenufares:
+        img.paste(sprite, (int(x), int(y)), sprite)
+
+
+def _dibujar_microfono(escala):
+    """
+    Micro vintage de pie, grande y de silueta simple (pocas bandas gruesas
+    en vez de una rejilla fina) para que se lea bien aunque sea pequeño en
+    el vídeo: cabeza redondeada, yugo en U cromado, pie y base de peso.
+    """
+    k = SS * 0.9 * escala
+    w, h = int(100 * k), int(190 * k)
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    gris, oscuro, cromo = (215, 215, 220), (30, 28, 30), (175, 175, 180)
+    cx = 50 * k
+
+    d.ellipse([cx - 32 * k, 168 * k, cx + 32 * k, 190 * k], fill=oscuro)   # base de peso
+    d.ellipse([cx - 27 * k, 168 * k, cx + 27 * k, 185 * k], fill=gris)
+    d.rectangle([cx - 5 * k, 94 * k, cx + 5 * k, 172 * k], fill=cromo)     # pie
+
+    d.arc([cx - 22 * k, 76 * k, cx + 22 * k, 104 * k], 200, 340, fill=cromo,  # yugo en U
+          width=max(1, int(6 * k)))
+    d.ellipse([cx - 6 * k, 85 * k, cx + 6 * k, 97 * k], fill=oscuro)
+
+    d.rounded_rectangle([cx - 28 * k, 18 * k, cx + 28 * k, 90 * k], radius=int(26 * k),
+                         fill=gris, outline=oscuro, width=max(1, int(3 * k)))  # cabeza
+    for yy in range(30, 80, 11):  # pocas bandas, gruesas
+        d.rounded_rectangle([cx - 22 * k, yy * k, cx + 22 * k, (yy + 6) * k], radius=int(3 * k), fill=oscuro)
+
+    img = img.filter(ImageFilter.SMOOTH)
+    return img.resize((max(1, w // SS), max(1, h // SS)), Image.LANCZOS)
+
+
+def generar_microfonos(W, H, y_base, escala):
+    """
+    Un micro vintage fijo delante de cada rana, apoyado en el nenúfar. No se
+    mueve con la rana (ni con el bote ni la respiración): queda siempre en
+    el mismo sitio del nenúfar, como un micro de pie de verdad.
+    """
+    micros = []
+    for i, cx in enumerate(X_RANAS):
+        sprite = _dibujar_microfono(escala)
+        lado = 0.06 if i == 0 else -0.06  # algo hacia el centro, como en una entrevista
+        x = cx * W + lado * W - sprite.width / 2
+        y = y_base - sprite.height
+        micros.append((sprite, x, y))
+    return micros
+
+
+def dibujar_microfonos(img, micros):
+    """Pega los micrófonos, por delante de las ranas."""
+    for sprite, x, y in micros:
+        img.paste(sprite, (int(x), int(y)), sprite)
 
 
 if __name__ == "__main__":

@@ -137,7 +137,14 @@ def estados_boca(db_propio, db_otro, zcr_propio, centro_propio, sensibilidad=0.0
 
     aten = estimar_atenuacion(db_propio, db_otro) if antisangrado is None else antisangrado
     margen = 4.0
-    u_zcr = np.percentile(zcr_propio, 70)  # cruces por cero inusualmente altos: consonante
+
+    # un solo fotograma de ruido no debe bastar para que "parezca" una
+    # consonante o cambie el color de vocal: se suavizan ambas señales antes
+    # de decidir la forma, si no la boca parpadea en cada mínimo cambio
+    ventana = np.ones(5) / 5
+    zcr_propio = np.convolve(zcr_propio, ventana, mode="same")
+    centro_propio = np.convolve(centro_propio, ventana, mode="same")
+    u_zcr = np.percentile(zcr_propio, 85)  # solo picos de verdad claros: consonante
 
     estados = np.zeros(len(db_propio), dtype=np.int8)
     hablando = False
@@ -178,15 +185,3 @@ def diagnostico(nombre, db_propio, db_otro):
           f"{np.nanpercentile(sangr, 50):.0f} (picos {np.nanpercentile(sangr, 95):.0f}) · "
           f"voz propia ≈ {voz_med:.0f} dBFS → --umbral sugerido ≈ {recomendado:.0f}")
     return recomendado
-
-
-def actividad_suavizada(estados, fps, segundos=0.6):
-    """1.0 si la rana ha hablado recientemente, decae a 0. Sirve para el 'foco'."""
-    habla = (estados > 0).astype(np.float32)
-    act = np.zeros_like(habla)
-    decae = 1.0 / (segundos * fps)
-    v = 0.0
-    for i, h in enumerate(habla):
-        v = 1.0 if h else max(0.0, v - decae)
-        act[i] = v
-    return act

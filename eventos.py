@@ -92,9 +92,9 @@ def dibujar_humo(k, edad):
     return img
 
 
-def dibujar_cerdo(k, paso, hocica=0.0):
-    """Porc negre mallorquí. paso 0..3 para las patas, hocica 0..1 baja el morro. Mira a la derecha."""
-    w, h = int(210 * k), int(140 * k)
+def dibujar_cerdo_corriendo(k, paso):
+    """Porc negre corriendo despavorido, de perfil, con las patas muy abiertas. paso 0..3. Mira a la derecha."""
+    w, h = int(150 * k), int(100 * k)
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     negro, gris, rosa = (38, 34, 38), (70, 64, 70), (150, 110, 120)
@@ -102,27 +102,52 @@ def dibujar_cerdo(k, paso, hocica=0.0):
     def E(x0, y0, x1, y1, **kw):
         d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
 
-    # patas: pares opuestos avanzan alternos
-    osc = [0, 10, 0, -10][paso % 4]
-    for i, (px, fase) in enumerate(((50, 1), (72, -1), (130, -1), (152, 1))):
+    osc = [0, 14, 0, -14][paso % 4]
+    for i, (px, fase) in enumerate(((35, 1), (55, -1), (95, -1), (115, 1))):
         dx = osc * fase
-        d.polygon([((px - 7) * k, 95 * k), ((px + 7) * k, 95 * k), ((px + 5 + dx) * k, 128 * k),
-                   ((px - 5 + dx) * k, 128 * k)], fill=negro if i % 2 else gris)
-        E(px - 7 + dx, 122, px + 7 + dx, 132, fill=(30, 26, 28))
-    # cola rizada
-    d.arc([14 * k, 42 * k, 34 * k, 62 * k], 90, 400, fill=negro, width=max(1, int(4 * k)))
-    # cuerpo
-    E(24, 34, 176, 112, fill=negro)
-    E(40, 40, 120, 70, fill=gris)  # brillo del lomo
-    # cabeza (baja al hozar)
-    dy = 18 * hocica
-    E(138, 30 + dy, 196, 88 + dy, fill=negro)
-    d.polygon([(150 * k, (34 + dy) * k), (164 * k, (8 + dy) * k), (174 * k, (38 + dy) * k)], fill=gris)  # oreja
-    E(178, 56 + dy, 206, 80 + dy, fill=rosa)  # hocico
-    E(186, 63 + dy, 191, 70 + dy, fill=(60, 40, 45))
-    E(195, 63 + dy, 200, 70 + dy, fill=(60, 40, 45))
-    E(166, 46 + dy, 174, 54 + dy, fill=(245, 245, 245))
-    E(168, 48 + dy, 173, 53 + dy, fill=(10, 10, 10))
+        d.polygon([((px - 6) * k, 60 * k), ((px + 6) * k, 60 * k), ((px + 5 + dx) * k, 92 * k),
+                   ((px - 5 + dx) * k, 92 * k)], fill=negro if i % 2 else gris)
+    d.arc([10 * k, 20 * k, 32 * k, 42 * k], 60, 380, fill=negro, width=max(1, int(4 * k)))  # cola tiesa del susto
+    E(18, 10, 132, 72, fill=negro)  # cuerpo estirado al galope
+    E(115, 2, 148, 42, fill=negro)  # cabeza
+    d.polygon([(122 * k, 6 * k), (130 * k, -10 * k), (138 * k, 8 * k)], fill=gris)  # oreja
+    E(134, 16, 150, 32, fill=rosa)  # hocico
+    E(128, 10, 134, 16, fill=(250, 250, 250))  # ojo muy abierto, del susto
+    E(130, 11, 133, 14, fill=(10, 10, 10))
+    return img
+
+
+def dibujar_payes(k, paso, arma):
+    """Payés corriendo con un cuchillo o una olla en alto. paso 0..3 anima las piernas. Mira a la derecha."""
+    w, h = int(100 * k), int(130 * k)
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    piel, camisa, oscuro = (228, 182, 150), (205, 65, 55), (40, 36, 40)
+
+    def E(x0, y0, x1, y1, **kw):
+        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
+
+    def R(x0, y0, x1, y1, **kw):
+        d.rectangle([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
+
+    osc = [0, 16, 0, -16][paso % 4]
+    for px, fase in ((30, 1), (50, -1)):  # piernas a la carrera
+        dx = osc * fase
+        d.polygon([((px - 6) * k, 78 * k), ((px + 6) * k, 78 * k), ((px + 4 + dx) * k, 120 * k),
+                   ((px - 8 + dx) * k, 120 * k)], fill=oscuro)
+    R(18, 40, 62, 82, fill=camisa)  # cuerpo
+    d.line([(20 * k, 50 * k), (4 * k, 32 * k)], fill=piel, width=max(1, int(6 * k)))  # brazo de atrás
+    E(24, 10, 58, 44, fill=piel)  # cabeza
+    d.chord([20 * k, 2 * k, 62 * k, 26 * k], 180, 360, fill=(90, 80, 70))  # gorra de pagès
+
+    sube = 10 if paso % 2 == 0 else 2  # el brazo del arma sube y baja al correr
+    d.line([(58 * k, 46 * k), (80 * k, (24 - sube) * k)], fill=piel, width=max(1, int(7 * k)))
+    if arma == "cuchillo":
+        d.polygon([(76 * k, (20 - sube) * k), (94 * k, (6 - sube) * k), (82 * k, (26 - sube) * k)],
+                   fill=(215, 215, 220), outline=oscuro)
+    else:  # olla, a modo de instrumento de percusión improvisado
+        E(68, 6 - sube, 94, 26 - sube, fill=(120, 120, 128), outline=oscuro, width=max(1, int(2 * k)))
+        R(74, 0 - sube, 88, 8 - sube, fill=(95, 95, 102))
     return img
 
 
@@ -167,6 +192,44 @@ def dibujar_gusano(k, fase):
     d.arc([172 * k, (yh - 2) * k, 190 * k, (yh + 10) * k], 20, 150, fill=(40, 80, 30), width=max(1, int(2 * k)))
     d.line([(172 * k, (yh - 15) * k), (168 * k, (yh - 28) * k)], fill=(70, 130, 50), width=max(1, int(2 * k)))
     d.ellipse([164 * k, (yh - 33) * k, 172 * k, (yh - 25) * k], fill=(240, 120, 120))
+    return img
+
+
+def dibujar_oveja(k, pasto=0.0):
+    """Oveja de perfil, lanuda. pasto 0..1 agacha la cabeza a pastar. Mira a la derecha."""
+    w, h = int(90 * k), int(68 * k)
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    lana, sombra, negro = (248, 246, 240), (220, 216, 206), (45, 42, 40)
+
+    def E(x0, y0, x1, y1, **kw):
+        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
+
+    for px in (22, 34, 56, 68):  # patas
+        d.rectangle([(px - 3) * k, 46 * k, (px + 3) * k, 64 * k], fill=negro)
+    for cx, cy, r in ((44, 34, 22), (26, 36, 15), (60, 36, 15), (36, 24, 13), (52, 24, 13)):  # lana a bultos
+        E(cx - r, cy - r * 0.85, cx + r, cy + r * 0.85, fill=lana, outline=sombra, width=max(1, int(k)))
+    dy = 14 * pasto  # la cabeza se agacha al pastar
+    E(70, 20 + dy, 88, 38 + dy, fill=negro)
+    E(73, 25 + dy, 77, 29 + dy, fill=(95, 90, 86))
+    return img
+
+
+def dibujar_perro(k, paso=0):
+    """Perro pastor corriendo tras el rebaño. paso 0..3 anima las patas. Mira a la derecha."""
+    w, h = int(100 * k), int(76 * k)
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    pelo, oscuro = (122, 92, 56), (72, 52, 32)
+    osc = [0, 9, 0, -9][paso % 4]
+    for px, fase in ((20, 1), (35, -1), (62, -1), (77, 1)):
+        dx = osc * fase
+        d.line([(px * k, 46 * k), ((px + dx) * k, 68 * k)], fill=oscuro, width=max(1, int(5 * k)))
+    d.polygon([(8 * k, 28 * k), (20 * k, 14 * k), (24 * k, 32 * k)], fill=oscuro)  # cola
+    d.ellipse([16 * k, 20 * k, 76 * k, 52 * k], fill=pelo, outline=oscuro, width=max(1, int(2 * k)))  # cuerpo
+    d.ellipse([70 * k, 12 * k, 96 * k, 36 * k], fill=pelo, outline=oscuro, width=max(1, int(2 * k)))  # cabeza
+    d.polygon([(78 * k, 10 * k), (82 * k, -2 * k), (88 * k, 12 * k)], fill=oscuro)  # oreja
+    d.ellipse([90 * k, 20 * k, 96 * k, 26 * k], fill=(30, 25, 20))  # morro
     return img
 
 
@@ -230,45 +293,39 @@ class Tractor(Evento):
 
 
 class Cerdo(Evento):
-    capa = "frente"
-    SEG = 16
+    """El porc negre huye por el camí con una muchedumbre de payeses detrás, cuchillo y olla en alto."""
+    capa = "fondo"
+    SEG = 11
 
     def __init__(self, W, H, fps, rng):
         super().__init__(W, H, fps, rng)
         k = SS * 0.75 * self.escala
         esp = self.dir == -1
-        self.andar = [_reducir(dibujar_cerdo(k, p), esp) for p in range(4)]
-        self.hozar = [_reducir(dibujar_cerdo(k, 0, h / 3), esp) for h in range(4)]
-        self.ancho = self.andar[0].width
-        # se para a husmear en algún punto del recorrido
-        self.parada_ini = rng.uniform(0.3, 0.6)
-        self.parada_seg = rng.uniform(2.0, 3.5)
-        self.duracion = int((self.SEG + self.parada_seg) * fps)
+        self.cerdo = [_reducir(dibujar_cerdo_corriendo(k, p), esp) for p in range(4)]
+        self.ancho = self.cerdo[0].width
+        n = rng.randint(4, 5)  # una muchedumbre de verdad
+        self.payeses = []
+        for j in range(n):
+            arma = "cuchillo" if j % 2 == 0 else "olla"
+            frames = [_reducir(dibujar_payes(k * 0.8, p, arma), esp) for p in range(4)]
+            retraso = (j + 1) * rng.uniform(0.14, 0.22)  # cada uno un poco más atrás, desincronizados
+            dy = rng.uniform(-4, 4) * self.escala
+            self.payeses.append((frames, retraso, dy))
+        self.y = (Y_CAMI - 0.03) * H  # junto al camí, cerca de por donde pasa el tractor
+        self.duracion = int(self.SEG * fps)
 
-    def _estado(self, t):
-        s = t / self.fps
-        ini = self.parada_ini * self.SEG
-        if s < ini:
-            return s, False
-        if s < ini + self.parada_seg:
-            return ini, True
-        return s - self.parada_seg, False
-
-    def _x(self, t):
-        s, _ = self._estado(t)
-        return self.x_lineal(s * self.fps, self.ancho, self.SEG)
+    def _x(self, t, retraso=0.0):
+        return self.x_lineal(t - retraso * self.fps, self.ancho, self.SEG)
 
     def sprites(self, t):
-        s, parado = self._estado(t)
-        x = self._x(t)
-        if parado:
-            im = self.hozar[int(abs(math.sin(t * 0.35)) * 3.99)]
-            bote = 0
-        else:
-            im = self.andar[(t // 3) % 4]
-            bote = int(abs(math.sin(t * 0.52)) * 3 * self.escala)
-        y = int((Y_FRENTE + 0.01) * self.H) - im.height - bote
-        return [(im, int(x), y)]
+        out = []
+        for frames, retraso, dy in self.payeses:
+            x = self._x(t, retraso)
+            im = frames[(t // 3) % 4]
+            out.append((im, int(x), int(self.y - im.height + dy)))
+        xc = self._x(t)
+        out.append((self.cerdo[(t // 2) % 4], int(xc), int(self.y - self.cerdo[0].height)))
+        return out
 
     def x_interes(self, t):
         return self._x(t) + self.ancho / 2
@@ -328,7 +385,46 @@ class Gusano(Evento):
         return self.x_lineal(t, self.ancho, self.SEG) + self.ancho / 2
 
 
-TIPOS = {"tractor": Tractor, "cerdo": Cerdo, "pajaros": Pajaros, "gusano": Gusano}
+class Ovejas(Evento):
+    """Un rebaño pasturando despacio por el campo, con un perro que lo persigue de un lado a otro."""
+    capa = "fondo"
+    SEG = 19
+
+    def __init__(self, W, H, fps, rng):
+        super().__init__(W, H, fps, rng)
+        k = SS * 0.6 * self.escala
+        esp = self.dir == -1
+        pasto = [_reducir(dibujar_oveja(k, (1 - math.cos(2 * math.pi * f / 11)) / 2), esp) for f in range(12)]
+        self.ancho = pasto[0].width
+        n = rng.randint(3, 4)
+        # cada oveja con su propio desplazamiento y fase de pastar, para que no vayan a la vez
+        self.ovejas = [(rng.uniform(-0.09, 0.09) * W, rng.randrange(12)) for _ in range(n)]
+        self.frames_oveja = pasto
+        self.perro = [_reducir(dibujar_perro(k * 1.1, p), esp) for p in range(4)]
+        self.y = (Y_CAMI - 0.05) * H
+        self.duracion = int(self.SEG * fps)
+
+    def _x_rebano(self, t):
+        return self.x_lineal(t, self.ancho * 2, self.SEG)
+
+    def _x_perro(self, t):
+        return self._x_rebano(t) + math.sin(t / self.fps * 1.3) * 0.12 * self.W
+
+    def sprites(self, t):
+        xb = self._x_rebano(t)
+        out = []
+        for off, fase in self.ovejas:
+            im = self.frames_oveja[(t // 4 + fase) % len(self.frames_oveja)]
+            out.append((im, int(xb + off), int(self.y - im.height)))
+        perro = self.perro[(t // 2) % 4]
+        out.append((perro, int(self._x_perro(t)), int(self.y - perro.height + 4 * self.escala)))
+        return out
+
+    def x_interes(self, t):
+        return self._x_perro(t)
+
+
+TIPOS = {"tractor": Tractor, "cerdo": Cerdo, "pajaros": Pajaros, "gusano": Gusano, "ovejas": Ovejas}
 
 
 def programar_eventos(n_frames, fps, W, H, tipos, cada, semilla):

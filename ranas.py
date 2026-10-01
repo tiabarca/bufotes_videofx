@@ -26,10 +26,10 @@ from collections import OrderedDict
 import numpy as np
 from PIL import Image, ImageDraw
 
-from audio import (FFMPEG, actividad_suavizada, cargar_audio, centroide_por_fotograma, diagnostico,
-                    estados_boca, nivel_por_fotograma, tasa_cruces_por_fotograma)
-from escena import (X_RANAS, Nubes, dibujar_canas, dibujar_nenufares, dibujar_reflejos, fondo_mallorquin,
-                     generar_canas, generar_nenufares, generar_reflejos)
+from audio import (FFMPEG, cargar_audio, centroide_por_fotograma, diagnostico, estados_boca,
+                    nivel_por_fotograma, tasa_cruces_por_fotograma)
+from escena import (X_RANAS, Nubes, dibujar_canas, dibujar_microfonos, dibujar_nenufares, dibujar_reflejos,
+                     fondo_mallorquin, generar_canas, generar_microfonos, generar_nenufares, generar_reflejos)
 from eventos import TIPOS, programar_eventos
 from personajes import cargar_sprites
 
@@ -129,7 +129,6 @@ def main():
     umb = (args.umbral or [None]) * 2 if not args.umbral or len(args.umbral) == 1 else args.umbral[:2]
     boca = [estados_boca(da, db, za, ca, args.sensibilidad, args.antisangrado, umb[0]),
             estados_boca(db, da, zb, cb, args.sensibilidad, args.antisangrado, umb[1])]
-    foco = [actividad_suavizada(boca[0], fps), actividad_suavizada(boca[1], fps)]
     parpadeo = [horario_parpadeos(n, fps, semilla + 1), horario_parpadeos(n, fps, semilla + 2)]
     print(f"  {n} fotogramas ({n / fps / 60:.1f} min). "
           f"A habla {np.mean(boca[0] > 0) * 100:.0f}% · B habla {np.mean(boca[1] > 0) * 100:.0f}%")
@@ -147,7 +146,8 @@ def main():
     nubes = Nubes(n, fps, W, H, semilla)
     canas = generar_canas(W, H, semilla)
     reflejos = generar_reflejos(W, H, semilla)
-    nenufares = generar_nenufares(W, H)
+    nenufares = generar_nenufares(W, H, semilla)
+    micros = generar_microfonos(W, H, H * 0.875, escala)
 
     agenda = programar_eventos(n, fps, W, H, args.eventos, args.eventos_cada, semilla)
     activo = [None] * n  # índice del evento activo en cada fotograma
@@ -161,28 +161,24 @@ def main():
             resumen[nombre] = resumen.get(nombre, 0) + 1
         print(f"  Eventos: {', '.join(f'{v} {k}' for k, v in resumen.items())} (semilla {semilla})")
 
-    # sprites de rana ya transformados (respiración, foco); el fondo entero no se
+    # sprites de rana ya transformados (respiración); el fondo entero no se
     # puede cachear por estado porque nubes/cañas/reflejos cambian en cada fotograma
     cache_rana = LRU(400)
 
-    def sprite_rana(r, b, ojos, mira, resp, lum):
-        clave = (r, b, ojos, mira, resp, lum)
+    def sprite_rana(r, b, ojos, mira, resp):
+        clave = (r, b, ojos, mira, resp)
         spr = cache_rana.get(clave)
         if spr is None:
             spr = sprites[r][(b, ojos, mira)]
             if resp:  # respiración: estirar un poco en vertical
                 spr = spr.resize((spr.width, int(spr.height * (1 + 0.015 * resp))), Image.BILINEAR)
-            if lum < 1.0:  # la rana que no habla, algo apagada
-                rgb, a = spr.convert("RGB"), spr.getchannel("A")
-                spr = Image.blend(Image.new("RGB", rgb.size, (40, 60, 70)), rgb, lum)
-                spr.putalpha(a)
             cache_rana.put(clave, spr)
         return spr
 
     def pegar_ranas(img, estado):
         for r in (0, 1):
-            b, ojos, mira, bote, resp, lum = estado[r]
-            spr = sprite_rana(r, b, ojos, mira, resp, lum)
+            b, ojos, mira, bote, resp = estado[r]
+            spr = sprite_rana(r, b, ojos, mira, resp)
             x = anclas[r][0] - spr.width // 2
             y = anclas[r][1] - spr.height - int(bote * 4 * escala)
             img.paste(spr, (x, y), spr)
@@ -195,7 +191,7 @@ def main():
         t_seg = i / fps
         dibujar_canas(draw, canas, t_seg, H)
         dibujar_reflejos(draw, reflejos, t_seg, W)
-        dibujar_nenufares(draw, nenufares)
+        dibujar_nenufares(img, nenufares)
 
         ev, t_ev = None, 0
         if ev_idx is not None:
@@ -205,6 +201,7 @@ def main():
                 for im, x, y in ev.sprites(t_ev):
                     img.paste(im, (x, y), im)
         pegar_ranas(img, estado)
+        dibujar_microfonos(img, micros)
         if ev is not None and ev.capa == "frente":
             for im, x, y in ev.sprites(t_ev):
                 img.paste(im, (x, y), im)
@@ -241,13 +238,12 @@ def main():
                 b = int(boca[r][i])
                 bote = BOTE_POR_BOCA[b]
                 resp = round((math.sin(2 * math.pi * i / periodo_resp[r]) + 1) * 1.5)  # 0..3
-                lum = round(0.78 + 0.22 * float(foco[r][i]), 1)
                 if x_ev is not None and -0.05 * W < x_ev < 1.05 * W:
                     dx = x_ev - anclas[r][0]  # las dos miran lo que pasa
                     mira = 0 if abs(dx) < margen_mirada else (1 if dx > 0 else -1)
                 else:
                     mira = 1 if r == 0 else -1  # se miran entre ellas
-                estado.append((b, not parpadeo[r][i], mira, bote, resp, lum))
+                estado.append((b, not parpadeo[r][i], mira, bote, resp))
             proc.stdin.write(componer(i, tuple(estado), ev_idx))
             if i % (fps * 60) == 0 and i:
                 v = i / (time.time() - t0)

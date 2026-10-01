@@ -94,17 +94,14 @@ def rana_generada(color, boca, ojos_abiertos, escala=1.0, mirando=1, accesorio=N
     if boca == 0:
         d.arc([100 * k, (140 + OY) * k, 260 * k, (205 + OY) * k], 20, 160,
               fill=(30, 50, 30), width=int(6 * k))
-    elif boca == 5:  # oclusiva: labios apretados y tensos, con los dientes marcados
+    elif boca == 5:  # oclusiva: labios apretados y tensos
         rect(118, 178, 242, 198, fill=(120, 30, 40), outline=(30, 50, 30), width=int(4 * k))
-        linea([(126, 188), (234, 188)], fill=(245, 245, 240), width=int(3 * k))
+        linea([(126, 188), (234, 188)], fill=(70, 15, 20), width=int(3 * k))
     else:
         x0, x1, alto = GEOM_BOCA[boca]
         cx = (x0 + x1) / 2
         e(x0, 170, x1, 170 + alto, fill=(120, 30, 40), outline=(30, 50, 30), width=int(5 * k))
         e(cx - 30, 170 + alto * 0.45, cx + 30, 170 + alto * 0.95, fill=(230, 110, 120))
-        if boca == 6:  # grito: se le ven los dientes de arriba, bien abierta
-            e(x0 + 20, 172, x0 + 45, 185, fill=(255, 255, 250))
-            e(x1 - 45, 172, x1 - 20, 185, fill=(255, 255, 250))
     return img
 
 

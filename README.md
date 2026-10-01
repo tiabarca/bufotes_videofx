@@ -14,7 +14,7 @@ El nombre viene del *calàpet* (*Bufotes balearicus*), el sapo verde balear. Por
 
 ## Qué hace este proyecto
 
-Convierte cada episodio, grabado en dos pistas, en un vídeo en el que dos calàpets hablan en un estanque de la Serra de Tramuntana, con una possessió al fondo. Cada uno mueve la boca con su propia pista. De vez en cuando pasan cosas: un tractor por el camí, un porc negre que se para a husmear, dos pájaros y un gusano. Las ranas se giran para mirarlos.
+Convierte cada episodio, grabado en dos pistas, en un vídeo en el que dos calàpets hablan en un estanque de la Serra de Tramuntana, con una possessió al fondo. Cada uno mueve la boca con su propia pista. De vez en cuando pasan cosas: un tractor por el camí, un porc negre que asoma la cabeza y se esconde, dos pájaros, un gusano y un rebaño de ovejas pasturando con un perro que las persigue. Las ranas se giran para mirarlos.
 
 Todo se genera en local con Python y ffmpeg, sin IA ni servicios de pago. Un episodio de 30 minutos tarda unos pocos minutos en renderizarse.
 
@@ -73,7 +73,7 @@ ranas.py       línea de comandos y render (envía los fotogramas a ffmpeg)
 audio.py       niveles por fotograma, umbrales, anti-sangrado entre micros
 escena.py      fondo: montañas, marjades con olivos, possessió, estanque
 personajes.py  las dos ranas (bocas, parpadeo, mirada, sombrero, gafas)
-eventos.py     tractor, cerdo, pájaros, gusano y la programación aleatoria
+eventos.py     tractor, cerdo, pájaros, gusano, ovejas y la programación aleatoria
 ```
 
 ### Añadir un evento nuevo
@@ -108,6 +108,15 @@ Opcionalmente puedes añadir `ranaA_boca3.png` .. `ranaA_boca6.png` para los
 nuevos estados de la boca; si no existen, se reutiliza el PNG clásico más
 parecido (3 y 4 caen en boca2, 5 en boca1, 6 en boca2), así que los assets
 antiguos siguen funcionando sin tocarlos.
+
+## Ideas para una v2
+
+- **Vocales reales por transcripción**: en vez de aproximar la vocal por color
+  espectral (ver "La boca" más arriba), mandar cada pista a una API de
+  transcripción (speech-to-text) y usar el texto/fonemas con sus tiempos para
+  saber qué vocal toca en cada instante. Requeriría conexión a internet y una
+  clave de API (deja de ser 100% local y gratis, que es la gracia actual del
+  proyecto), pero la sincronía boca-fonema sería mucho más precisa.
 
 ## Licencia
 
