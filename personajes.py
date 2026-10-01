@@ -4,10 +4,21 @@ import os
 
 from PIL import Image, ImageDraw
 
+#   0 cerrada · 1 vocal pequeña redonda · 2 vocal pequeña ancha
+#   3 vocal grande redonda · 4 vocal grande ancha · 5 oclusiva · 6 grito
+GEOM_BOCA = {
+    1: (130, 230, 26),
+    2: (105, 255, 22),
+    3: (120, 240, 60),
+    4: (95, 265, 50),
+    6: (100, 260, 95),
+}
+
+
 def rana_generada(color, boca, ojos_abiertos, escala=1.0, mirando=1, accesorio=None):
     """
-    Dibuja una rana. boca: 0/1/2, ojos_abiertos: bool, mirando: 1 derecha / -1 izquierda,
-    accesorio: None, "sombrero" o "gafas".
+    Dibuja una rana. boca: 0-6 (ver GEOM_BOCA), ojos_abiertos: bool,
+    mirando: 1 derecha / -1 izquierda, accesorio: None, "sombrero" o "gafas".
     """
     OY = 120  # margen superior (unidades de diseño) para que quepa el sombrero
     S = int(360 * escala)
@@ -83,14 +94,32 @@ def rana_generada(color, boca, ojos_abiertos, escala=1.0, mirando=1, accesorio=N
     if boca == 0:
         d.arc([100 * k, (140 + OY) * k, 260 * k, (205 + OY) * k], 20, 160,
               fill=(30, 50, 30), width=int(6 * k))
+    elif boca == 5:  # oclusiva: labios apretados y tensos, con los dientes marcados
+        rect(118, 178, 242, 198, fill=(120, 30, 40), outline=(30, 50, 30), width=int(4 * k))
+        linea([(126, 188), (234, 188)], fill=(245, 245, 240), width=int(3 * k))
     else:
-        alto = 30 if boca == 1 else 62
-        e(115, 170, 245, 170 + alto, fill=(120, 30, 40), outline=(30, 50, 30), width=int(5 * k))
-        e(150, 170 + alto * 0.45, 210, 170 + alto * 0.95, fill=(230, 110, 120))
+        x0, x1, alto = GEOM_BOCA[boca]
+        cx = (x0 + x1) / 2
+        e(x0, 170, x1, 170 + alto, fill=(120, 30, 40), outline=(30, 50, 30), width=int(5 * k))
+        e(cx - 30, 170 + alto * 0.45, cx + 30, 170 + alto * 0.95, fill=(230, 110, 120))
+        if boca == 6:  # grito: se le ven los dientes de arriba, bien abierta
+            e(x0 + 20, 172, x0 + 45, 185, fill=(255, 255, 250))
+            e(x1 - 45, 172, x1 - 20, 185, fill=(255, 255, 250))
     return img
 
 
 MIRADAS = (-1, 0, 1)  # izquierda, al frente, derecha
+
+# si no hay un PNG propio para un estado de boca nuevo (3,4,5,6), se usa el
+# más parecido de los clásicos 0/1/2 para no obligar a redibujar los assets
+ALTERNATIVA_BOCA = {3: 2, 4: 2, 5: 1, 6: 2}
+
+
+def _ruta_boca(assets, nombre, boca):
+    ruta = os.path.join(assets, f"rana{nombre}_boca{boca}.png")
+    if os.path.exists(ruta):
+        return ruta
+    return os.path.join(assets, f"rana{nombre}_boca{ALTERNATIVA_BOCA.get(boca, 2)}.png")
 
 
 def cargar_sprites(assets, colores, escala, accesorios=("sombrero", "gafas")):
@@ -99,14 +128,16 @@ def cargar_sprites(assets, colores, escala, accesorios=("sombrero", "gafas")):
 
     Con --assets usa rana{A,B}_boca{0,1,2}.png y rana{A,B}_ojos_cerrados.png
     (capa transparente que se superpone). Los PNG propios no cambian la mirada.
+    Opcionalmente puedes añadir boca3.png..boca6.png (ver GEOM_BOCA); si no
+    existen, se reutiliza el PNG clásico más parecido.
     """
     sprites = {}
     for r, nombre in enumerate("AB"):
         sprites[r] = {}
-        for boca in (0, 1, 2):
+        for boca in (0, 1, 2, 3, 4, 5, 6):
             for ojos in (True, False):
                 if assets:
-                    im = Image.open(os.path.join(assets, f"rana{nombre}_boca{boca}.png")).convert("RGBA")
+                    im = Image.open(_ruta_boca(assets, nombre, boca)).convert("RGBA")
                     if not ojos:
                         pc = os.path.join(assets, f"rana{nombre}_ojos_cerrados.png")
                         if os.path.exists(pc):

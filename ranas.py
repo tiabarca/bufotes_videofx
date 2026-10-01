@@ -26,7 +26,8 @@ from collections import OrderedDict
 import numpy as np
 from PIL import Image, ImageDraw
 
-from audio import FFMPEG, actividad_suavizada, cargar_audio, diagnostico, estados_boca, nivel_por_fotograma
+from audio import (FFMPEG, actividad_suavizada, cargar_audio, centroide_por_fotograma, diagnostico,
+                    estados_boca, nivel_por_fotograma, tasa_cruces_por_fotograma)
 from escena import (X_RANAS, Nubes, dibujar_canas, dibujar_nenufares, dibujar_reflejos, fondo_mallorquin,
                      generar_canas, generar_nenufares, generar_reflejos)
 from eventos import TIPOS, programar_eventos
@@ -48,6 +49,11 @@ class LRU(OrderedDict):
         self[k] = v
         if len(self) > self.maximo:
             self.popitem(last=False)
+
+
+# rebote vertical según el estado de boca (ver GEOM_BOCA en personajes.py);
+# el grito (6) salta mucho más, para que se note que la rana está exaltada
+BOTE_POR_BOCA = {0: 0, 1: 1, 2: 1, 3: 2, 4: 2, 5: 2, 6: 6}
 
 
 def horario_parpadeos(n, fps, semilla):
@@ -118,9 +124,11 @@ def main():
         diagnostico("B", db, da)
         return
 
+    za, zb = tasa_cruces_por_fotograma(aa, fps)[:n], tasa_cruces_por_fotograma(ab, fps)[:n]
+    ca, cb = centroide_por_fotograma(aa, fps)[:n], centroide_por_fotograma(ab, fps)[:n]
     umb = (args.umbral or [None]) * 2 if not args.umbral or len(args.umbral) == 1 else args.umbral[:2]
-    boca = [estados_boca(da, db, args.sensibilidad, args.antisangrado, umb[0]),
-            estados_boca(db, da, args.sensibilidad, args.antisangrado, umb[1])]
+    boca = [estados_boca(da, db, za, ca, args.sensibilidad, args.antisangrado, umb[0]),
+            estados_boca(db, da, zb, cb, args.sensibilidad, args.antisangrado, umb[1])]
     foco = [actividad_suavizada(boca[0], fps), actividad_suavizada(boca[1], fps)]
     parpadeo = [horario_parpadeos(n, fps, semilla + 1), horario_parpadeos(n, fps, semilla + 2)]
     print(f"  {n} fotogramas ({n / fps / 60:.1f} min). "
@@ -231,7 +239,7 @@ def main():
             estado = []
             for r in (0, 1):
                 b = int(boca[r][i])
-                bote = (1 + b) if b else 0
+                bote = BOTE_POR_BOCA[b]
                 resp = round((math.sin(2 * math.pi * i / periodo_resp[r]) + 1) * 1.5)  # 0..3
                 lum = round(0.78 + 0.22 * float(foco[r][i]), 1)
                 if x_ev is not None and -0.05 * W < x_ev < 1.05 * W:

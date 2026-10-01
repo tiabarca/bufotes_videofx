@@ -86,10 +86,28 @@ En `eventos.py`, crea una clase que herede de `Evento` con:
 
 Después regístrala en el diccionario `TIPOS`. Aparecerá automáticamente en `--eventos`.
 
+### La boca
+
+Además de abrirse más o menos fuerte, la boca distingue (de forma aproximada,
+sin analizar formantes de verdad) entre vocales "redondas" (graves, tipo o/u)
+y "anchas" (agudas, tipo a/e/i) por el color espectral, detecta consonantes
+oclusivas (p/t/k/b/d/g...) por la tasa de cruces por cero, y tiene un estado
+de grito para los picos más fuertes que además hace saltar más a la rana:
+
+```
+0 cerrada · 1 vocal pequeña redonda · 2 vocal pequeña ancha
+3 vocal grande redonda · 4 vocal grande ancha · 5 oclusiva · 6 grito
+```
+
 ### Gráficos propios
 
 Con `--assets carpeta` se usan tus PNG en lugar de los dibujados por código:
 `fondo.png`, `ranaA_boca0.png`, `ranaA_boca1.png`, `ranaA_boca2.png` y `ranaA_ojos_cerrados.png` (capa transparente solo con los párpados), y lo mismo para `ranaB_…`. Los eventos siguen funcionando encima de tu fondo.
+
+Opcionalmente puedes añadir `ranaA_boca3.png` .. `ranaA_boca6.png` para los
+nuevos estados de la boca; si no existen, se reutiliza el PNG clásico más
+parecido (3 y 4 caen en boca2, 5 en boca1, 6 en boca2), así que los assets
+antiguos siguen funcionando sin tocarlos.
 
 ## Licencia
 
