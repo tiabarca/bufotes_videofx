@@ -24,10 +24,11 @@ import time
 from collections import OrderedDict
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from audio import FFMPEG, actividad_suavizada, cargar_audio, diagnostico, estados_boca, nivel_por_fotograma
-from escena import X_RANAS, fondo_mallorquin
+from escena import (X_RANAS, Nubes, dibujar_canas, dibujar_nenufares, dibujar_reflejos, fondo_mallorquin,
+                     generar_canas, generar_nenufares, generar_reflejos)
 from eventos import TIPOS, programar_eventos
 from personajes import cargar_sprites
 
@@ -135,6 +136,11 @@ def main():
     sprites = cargar_sprites(args.assets, [(95, 170, 80), (150, 185, 60)], escala * args.tamano_ranas, accs)
     anclas = [(int(W * X_RANAS[0]), int(H * 0.86)), (int(W * X_RANAS[1]), int(H * 0.86))]
 
+    nubes = Nubes(n, fps, W, H, semilla)
+    canas = generar_canas(W, H, semilla)
+    reflejos = generar_reflejos(W, H, semilla)
+    nenufares = generar_nenufares(W, H)
+
     agenda = programar_eventos(n, fps, W, H, args.eventos, args.eventos_cada, semilla)
     activo = [None] * n  # índice del evento activo en cada fotograma
     for idx, (ini, ev) in enumerate(agenda):
@@ -147,9 +153,9 @@ def main():
             resumen[nombre] = resumen.get(nombre, 0) + 1
         print(f"  Eventos: {', '.join(f'{v} {k}' for k, v in resumen.items())} (semilla {semilla})")
 
-    # sprites de rana ya transformados (respiración, foco) y fotogramas completos sin eventos
+    # sprites de rana ya transformados (respiración, foco); el fondo entero no se
+    # puede cachear por estado porque nubes/cañas/reflejos cambian en cada fotograma
     cache_rana = LRU(400)
-    cache_frame = LRU(200)
 
     def sprite_rana(r, b, ojos, mira, resp, lum):
         clave = (r, b, ojos, mira, resp, lum)
@@ -174,23 +180,25 @@ def main():
             img.paste(spr, (x, y), spr)
 
     def componer(i, estado, ev_idx):
-        if ev_idx is None:
-            datos = cache_frame.get(estado)
-            if datos is None:
-                img = fondo.copy()
-                pegar_ranas(img, estado)
-                datos = img.tobytes()
-                cache_frame.put(estado, datos)
-            return datos
-        ini, ev = agenda[ev_idx]
-        t = i - ini
         img = fondo.copy()
-        if ev.capa == "fondo":
-            for im, x, y in ev.sprites(t):
-                img.paste(im, (x, y), im)
+        draw = ImageDraw.Draw(img)
+        for spr, x, y in nubes.sprites(i):
+            img.paste(spr, (x, y), spr)
+        t_seg = i / fps
+        dibujar_canas(draw, canas, t_seg, H)
+        dibujar_reflejos(draw, reflejos, t_seg, W)
+        dibujar_nenufares(draw, nenufares)
+
+        ev, t_ev = None, 0
+        if ev_idx is not None:
+            ini, ev = agenda[ev_idx]
+            t_ev = i - ini
+            if ev.capa == "fondo":
+                for im, x, y in ev.sprites(t_ev):
+                    img.paste(im, (x, y), im)
         pegar_ranas(img, estado)
-        if ev.capa == "frente":
-            for im, x, y in ev.sprites(t):
+        if ev is not None and ev.capa == "frente":
+            for im, x, y in ev.sprites(t_ev):
                 img.paste(im, (x, y), im)
         return img.tobytes()
 

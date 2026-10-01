@@ -249,13 +249,6 @@ def fondo_mallorquin(W_out, H_out, semilla=11):
     for y in range(int(H * 0.6)):
         t = y / (H * 0.6)
         d.line([(0, y), (W, y)], fill=(int(118 + 110 * t), int(178 + 60 * t), int(228 + 12 * t)))
-    for _ in range(5):  # nubes
-        cx, cy = rng.uniform(0, W), rng.uniform(0.04, 0.13) * H
-        for _ in range(6):
-            r = rng.uniform(0.02, 0.04) * W
-            ox = rng.uniform(-0.05, 0.05) * W
-            d.ellipse([cx + ox - r, cy - r * 0.5, cx + ox + r, cy + r * 0.5], fill=(248, 250, 252))
-
     _montanas(img, d, W, H, rng)
     _marjades(d, W, H, rng)
     _possessio(d, W, H, rng)
@@ -281,37 +274,8 @@ def fondo_mallorquin(W_out, H_out, semilla=11):
     d.ellipse([-0.12 * W, 0.68 * H, 1.12 * W, 1.45 * H], fill=(96, 118, 88))  # orilla húmeda
     d.ellipse([-0.08 * W, 0.70 * H, 1.08 * W, 1.40 * H], fill=(58, 112, 138))
     d.ellipse([0.0, 0.73 * H, 1.0 * W, 1.35 * H], fill=(68, 128, 154))
-    for _ in range(40):
-        x, y = rng.uniform(0, W), rng.uniform(0.74, 0.93) * H
-        d.line([(x, y), (x + rng.uniform(20, 70) * SS, y)], fill=(118, 172, 196), width=2 * SS)
-    # reflejo de la montaña
-    for _ in range(14):
-        x, y = rng.uniform(0.2, 0.8) * W, rng.uniform(0.74, 0.8) * H
-        d.line([(x, y), (x + rng.uniform(30, 90) * SS, y)], fill=(92, 142, 166), width=3 * SS)
-
-    # cañas (canyes) en las esquinas
-    for x0 in [rng.uniform(0, 0.12) for _ in range(12)] + [rng.uniform(0.88, 1.0) for _ in range(12)]:
-        top = rng.uniform(0.5, 0.62) * H
-        xb = x0 * W
-        d.line([(xb, 0.8 * H), (xb + rng.uniform(-12, 12) * SS, top)], fill=(78, 112, 52), width=3 * SS)
-        if rng.random() < 0.45:
-            d.ellipse([xb - 5 * SS, top, xb + 5 * SS, top + 0.05 * H], fill=(112, 76, 46))
-
-    # nenúfares bajo cada rana
-    for cx in X_RANAS:
-        s = 0.26 * W
-        x0, y0 = cx * W - s / 2, 0.80 * H
-        d.ellipse([x0, y0, x0 + s, y0 + s * 0.42], fill=(60, 140, 60), outline=(40, 100, 40), width=4 * SS)
-        d.pieslice([x0, y0, x0 + s, y0 + s * 0.42], 250, 290, fill=(68, 128, 154))
-    # alguna flor de nenúfar
-    for fx, fy in ((0.5, 0.88), (0.1, 0.9), (0.9, 0.86)):
-        x, y = fx * W, fy * H
-        for a in range(0, 360, 45):
-            ra = math.radians(a)
-            d.ellipse([x + math.cos(ra) * 8 * SS - 6 * SS, y + math.sin(ra) * 4 * SS - 3 * SS,
-                       x + math.cos(ra) * 8 * SS + 6 * SS, y + math.sin(ra) * 4 * SS + 3 * SS],
-                      fill=(246, 206, 222))
-        d.ellipse([x - 4 * SS, y - 3 * SS, x + 4 * SS, y + 3 * SS], fill=(240, 200, 70))
+    # los nenúfares van por delante del brillo animado del agua: se dibujan
+    # cada fotograma con generar_nenufares()/dibujar_nenufares(), no aquí.
 
     # franja delantera de tierra y piedras (por aquí pasa el gusano)
     d.polygon([(0, 0.935 * H)] + [(x, (0.94 + 0.008 * math.sin(x / W * 9)) * H) for x in range(0, W + 40, 40)]
@@ -327,6 +291,153 @@ def fondo_mallorquin(W_out, H_out, semilla=11):
 
     img = img.filter(ImageFilter.SMOOTH)
     return img.resize((W_out, H_out), Image.LANCZOS)
+
+
+# ----------------------------------------------------------------------------
+# Elementos animados: nubes que cruzan el cielo, cañas con viento, brillo
+# del agua. Se calculan en resolución final (sin supersampling): son pocos
+# trazos y repintarlos cada fotograma es barato.
+# ----------------------------------------------------------------------------
+
+def _dibujar_nube(rng, escala):
+    """Nube suelta en silueta blanda, lista para desplazarse por el cielo."""
+    base_w, base_h = 140 * escala, 70 * escala
+    # lienzo con margen de sobra: si una bola se desplaza al extremo del rango
+    # (ox/r máximos) no debe tocar el borde, o se vería un corte en seco
+    w, h = max(1, int(base_w * 1.5)), max(1, int(base_h * 1.4))
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    cx, cy = w * 0.5, h * 0.5
+    for _ in range(6):
+        r = rng.uniform(0.16, 0.30) * base_w
+        ox = rng.uniform(-0.38, 0.38) * base_w
+        oy = rng.uniform(-0.12, 0.12) * base_h
+        d.ellipse([cx + ox - r, cy + oy - r * 0.55, cx + ox + r, cy + oy + r * 0.55],
+                  fill=(248, 250, 252, 235))
+    return img
+
+
+class Nubes:
+    """
+    Nubes que se van generando por la derecha y cruzan el cielo muy despacio
+    hacia la izquierda, sin parar durante todo el vídeo (tarda varios minutos
+    en cruzar la pantalla entera).
+    """
+
+    def __init__(self, n_frames, fps, W, H, semilla, cada=13.0, al_empezar=(4, 5)):
+        rng = random.Random(semilla)
+        self.W = W
+        vel_px_seg = 0.0035 * W  # muy lento: cruza la pantalla en ~5 min
+        self.agenda = []  # (frame_inicio, sprite, y, vel_px_por_frame)
+
+        def nueva_nube():
+            tam = rng.uniform(0.7, 1.6) * H / 720
+            sprite = _dibujar_nube(rng, tam)
+            y = rng.uniform(0.03, 0.15) * H
+            vel = (vel_px_seg * rng.uniform(0.7, 1.3)) / fps
+            return sprite, y, vel
+
+        # unas cuantas ya repartidas por el cielo desde el primer fotograma,
+        # en vez de empezar con el cielo vacío
+        for _ in range(rng.randint(*al_empezar)):
+            sprite, y, vel = nueva_nube()
+            x0 = rng.uniform(-0.1, 1.0) * W
+            t0 = int((x0 - self.W) / vel)
+            self.agenda.append((t0, sprite, y, vel))
+
+        t = int(rng.uniform(0.1, 1.0) * cada * fps)
+        while t < n_frames:
+            sprite, y, vel = nueva_nube()
+            self.agenda.append((t, sprite, y, vel))
+            t += int(rng.uniform(0.5, 1.6) * cada * fps)
+
+    def sprites(self, i):
+        """Lista de (imagen, x, y) a pintar en el fotograma `i`."""
+        out = []
+        for t0, sprite, y, vel in self.agenda:
+            if i < t0:
+                continue
+            x = self.W - (i - t0) * vel
+            if x < -sprite.width:
+                continue
+            out.append((sprite, int(x), int(y)))
+        return out
+
+
+def generar_canas(W, H, semilla):
+    """Posiciones de las cañas de las esquinas del estanque (sin dibujar)."""
+    rng = random.Random(semilla)
+    canas = []
+    for x0 in [rng.uniform(0, 0.12) for _ in range(12)] + [rng.uniform(0.88, 1.0) for _ in range(12)]:
+        xb = x0 * W
+        top = rng.uniform(0.5, 0.62) * H
+        dx = rng.uniform(-12, 12)
+        cabeza = rng.random() < 0.45
+        fase = rng.uniform(0, 2 * math.pi)
+        periodo = rng.uniform(2.6, 4.2)
+        canas.append((xb, top, dx, cabeza, fase, periodo))
+    return canas
+
+
+def dibujar_canas(d, canas, t_seg, H):
+    """Balanceo sutil y continuo de las cañas, como si las moviera el viento."""
+    amp = 0.012 * H
+    for xb, top, dx, cabeza, fase, periodo in canas:
+        viento = amp * math.sin(2 * math.pi * t_seg / periodo + fase)
+        tx, ty = xb + dx + viento, top
+        d.line([(xb, 0.8 * H), (tx, ty)], fill=(78, 112, 52), width=3)
+        if cabeza:
+            d.ellipse([tx - 5, ty, tx + 5, ty + 0.05 * H], fill=(112, 76, 46))
+
+
+def generar_reflejos(W, H, semilla):
+    """Parámetros de los brillos del agua (orilla y reflejo de la montaña)."""
+    rng = random.Random(semilla)
+    reflejos = []
+    for _ in range(40):
+        x, y = rng.uniform(0, W), rng.uniform(0.74, 0.93) * H
+        largo = rng.uniform(20, 70)
+        reflejos.append((x, y, largo, (118, 172, 196), 2, rng.uniform(0, 2 * math.pi), rng.uniform(2.5, 5.0)))
+    for _ in range(14):
+        x, y = rng.uniform(0.2, 0.8) * W, rng.uniform(0.74, 0.8) * H
+        largo = rng.uniform(30, 90)
+        reflejos.append((x, y, largo, (92, 142, 166), 3, rng.uniform(0, 2 * math.pi), rng.uniform(3.0, 6.0)))
+    return reflejos
+
+
+def dibujar_reflejos(d, reflejos, t_seg, W):
+    """Brillo del agua: vaivén horizontal muy suave y continuo (rizos de la superficie)."""
+    amp = 0.012 * W
+    for x, y, largo, color, ancho, fase, periodo in reflejos:
+        dx = amp * math.sin(2 * math.pi * t_seg / periodo + fase)
+        d.line([(x + dx, y), (x + dx + largo, y)], fill=color, width=ancho)
+
+
+def generar_nenufares(W, H):
+    """Posiciones de las hojas de nenúfar (bajo cada rana) y alguna flor."""
+    nenufares = []
+    for cx in X_RANAS:
+        s = 0.26 * W
+        nenufares.append(("hoja", cx * W - s / 2, 0.80 * H, s))
+    for fx, fy in ((0.5, 0.88), (0.1, 0.9), (0.9, 0.86)):
+        nenufares.append(("flor", fx * W, fy * H, None))
+    return nenufares
+
+
+def dibujar_nenufares(d, nenufares):
+    """Hojas y flores de nenúfar, por delante del brillo del agua."""
+    for tipo, a, b, s in nenufares:
+        if tipo == "hoja":
+            x0, y0 = a, b
+            d.ellipse([x0, y0, x0 + s, y0 + s * 0.42], fill=(60, 140, 60), outline=(40, 100, 40), width=4)
+            d.pieslice([x0, y0, x0 + s, y0 + s * 0.42], 250, 290, fill=(68, 128, 154))
+        else:
+            x, y = a, b
+            for ang in range(0, 360, 45):
+                ra = math.radians(ang)
+                d.ellipse([x + math.cos(ra) * 8 - 6, y + math.sin(ra) * 4 - 3,
+                           x + math.cos(ra) * 8 + 6, y + math.sin(ra) * 4 + 3], fill=(246, 206, 222))
+            d.ellipse([x - 4, y - 3, x + 4, y + 3], fill=(240, 200, 70))
 
 
 if __name__ == "__main__":

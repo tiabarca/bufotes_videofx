@@ -1,8 +1,27 @@
-# Ranas Podcast 🐸
+# Bufotes VideoFX 🐸
 
-Convierte un podcast grabado en dos pistas en un vídeo de dos ranas que hablan en un estanque de la Serra de Tramuntana, con una possessió al fondo. De vez en cuando pasan cosas: un tractor por el camí, un porc negre que se para a husmear, dos pájaros y un gusano. Las ranas se giran para mirarlos.
+Generador de vídeo para **[Bufotes Balearicus](https://bufotesbalearicus.cat)**, *un podcast illenc*.
+
+## El podcast
+
+Bufotes Balearicus es un podcast de humor en mallorquín: tertulia improvisada entre dos voces sobre actualidad, anécdotas y cultura de las islas, con secciones fijas como las noticias inventadas de *Bufota Today* y los patrocinios en clave de cachondeo. Lleva más de 90 episodios repartidos en tres temporadas.
+
+El nombre viene del *calàpet* (*Bufotes balearicus*), el sapo verde balear. Por eso, en el vídeo, los presentadores son dos ranas.
+
+- 🌐 Web: [bufotesbalearicus.cat](https://bufotesbalearicus.cat)
+- 🎧 Spotify: [Bufotes Balearicus](https://open.spotify.com/show/6zZ1yL499upJGVj8QRU9VT)
+- 🐦 X: [@BufotesPodcast](https://x.com/BufotesPodcast)
+
+## Qué hace este proyecto
+
+Convierte cada episodio, grabado en dos pistas, en un vídeo en el que dos calàpets hablan en un estanque de la Serra de Tramuntana, con una possessió al fondo. Cada uno mueve la boca con su propia pista. De vez en cuando pasan cosas: un tractor por el camí, un porc negre que se para a husmear, dos pájaros y un gusano. Las ranas se giran para mirarlos.
 
 Todo se genera en local con Python y ffmpeg, sin IA ni servicios de pago. Un episodio de 30 minutos tarda unos pocos minutos en renderizarse.
+
+| Rana | Pista | Accesorio |
+|---|---|---|
+| Izquierda | `A` | sombrero de copa |
+| Derecha | `B` | gafas redondas |
 
 ## Instalación
 
@@ -71,3 +90,7 @@ Después regístrala en el diccionario `TIPOS`. Aparecerá automáticamente en `
 
 Con `--assets carpeta` se usan tus PNG en lugar de los dibujados por código:
 `fondo.png`, `ranaA_boca0.png`, `ranaA_boca1.png`, `ranaA_boca2.png` y `ranaA_ojos_cerrados.png` (capa transparente solo con los párpados), y lo mismo para `ranaB_…`. Los eventos siguen funcionando encima de tu fondo.
+
+## Licencia
+
+[MIT](LICENSE)
