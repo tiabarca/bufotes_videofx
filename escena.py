@@ -331,9 +331,18 @@ class Nubes:
         self.agenda = []  # (frame_inicio, sprite, y, vel_px_por_frame)
 
         def nueva_nube():
-            tam = rng.uniform(0.7, 1.6) * H / 720
+            tam = rng.uniform(0.5, 1.05) * H / 720
             sprite = _dibujar_nube(rng, tam)
-            y = rng.uniform(0.03, 0.15) * H
+            # el lienzo de la nube lleva margen de sobra (para no cortarla en
+            # los bordes), así que lo visible es más pequeño que sprite.height;
+            # calculamos su mitad real para no pasarnos calculando el límite
+            medio_visible = 0.45 * (70 * tam)
+            # el pico más alto de las montañas llega a 0.11*H (ver _montanas);
+            # las nubes se quedan siempre por encima, con margen, para no
+            # tener que recortarlas por detrás del todo
+            centro_min, centro_max = 0.004 * H + medio_visible, 0.105 * H - medio_visible
+            centro = rng.uniform(min(centro_min, centro_max), max(centro_min, centro_max))
+            y = centro - sprite.height / 2
             vel = (vel_px_seg * rng.uniform(0.7, 1.3)) / fps
             return sprite, y, vel
 

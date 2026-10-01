@@ -17,7 +17,7 @@ import random
 
 from PIL import Image, ImageDraw
 
-from escena import Y_CAMI, Y_FRENTE
+from escena import X_RANAS, Y_CAMI, Y_FRENTE
 
 SS = 2  # supersampling de los sprites
 
@@ -107,13 +107,17 @@ def dibujar_cerdo_corriendo(k, paso):
         dx = osc * fase
         d.polygon([((px - 6) * k, 60 * k), ((px + 6) * k, 60 * k), ((px + 5 + dx) * k, 92 * k),
                    ((px - 5 + dx) * k, 92 * k)], fill=negro if i % 2 else gris)
-    d.arc([10 * k, 20 * k, 32 * k, 42 * k], 60, 380, fill=negro, width=max(1, int(4 * k)))  # cola tiesa del susto
-    E(18, 10, 132, 72, fill=negro)  # cuerpo estirado al galope
-    E(115, 2, 148, 42, fill=negro)  # cabeza
-    d.polygon([(122 * k, 6 * k), (130 * k, -10 * k), (138 * k, 8 * k)], fill=gris)  # oreja
-    E(134, 16, 150, 32, fill=rosa)  # hocico
-    E(128, 10, 134, 16, fill=(250, 250, 250))  # ojo muy abierto, del susto
-    E(130, 11, 133, 14, fill=(10, 10, 10))
+    bote = [0, -3, 0, -1][paso % 4]  # el tren delantero también bota al galopar, si no queda tieso
+    flap = [0, -6, -2, 3][paso % 4]  # la oreja ondea aparte, con su propio vaivén
+    d.arc([10 * k, (20 + bote) * k, 32 * k, (42 + bote) * k], 60, 380, fill=negro,
+          width=max(1, int(4 * k)))  # cola tiesa del susto
+    E(18, 10 + bote, 132, 72 + bote, fill=negro)  # cuerpo estirado al galope
+    E(115, 2 + bote, 148, 42 + bote, fill=negro)  # cabeza
+    d.polygon([(122 * k, (6 + bote) * k), (130 * k, (-10 + bote + flap) * k),
+               (138 * k, (8 + bote) * k)], fill=gris)  # oreja
+    E(134, 16 + bote, 150, 32 + bote, fill=rosa)  # hocico
+    E(128, 10 + bote, 134, 16 + bote, fill=(250, 250, 250))  # ojo muy abierto, del susto
+    E(130, 11 + bote, 133, 14 + bote, fill=(10, 10, 10))
     return img
 
 
@@ -301,14 +305,15 @@ class Cerdo(Evento):
         super().__init__(W, H, fps, rng)
         k = SS * 0.75 * self.escala
         esp = self.dir == -1
-        self.cerdo = [_reducir(dibujar_cerdo_corriendo(k, p), esp) for p in range(4)]
+        self.cerdo = [_reducir(dibujar_cerdo_corriendo(k * 0.5, p), esp) for p in range(4)]  # el porc, la mitad de grande
         self.ancho = self.cerdo[0].width
         n = rng.randint(4, 5)  # una muchedumbre de verdad
         self.payeses = []
+        retraso_base = rng.uniform(0.4, 0.55)  # que no le vayan pisando los talones al porc
         for j in range(n):
             arma = "cuchillo" if j % 2 == 0 else "olla"
             frames = [_reducir(dibujar_payes(k * 0.8, p, arma), esp) for p in range(4)]
-            retraso = (j + 1) * rng.uniform(0.14, 0.22)  # cada uno un poco más atrás, desincronizados
+            retraso = retraso_base + j * rng.uniform(0.14, 0.22)  # cada uno un poco más atrás, desincronizados
             dy = rng.uniform(-4, 4) * self.escala
             self.payeses.append((frames, retraso, dy))
         self.y = (Y_CAMI - 0.03) * H  # junto al camí, cerca de por donde pasa el tractor
@@ -366,29 +371,89 @@ class Pajaros(Evento):
 
 
 class Gusano(Evento):
+    """Un gusano se arrastra hacia la primera rana que encuentra; al llegar, se lo come de un lengüetazo."""
     capa = "frente"
-    SEG = 20
+    VEL = 20  # segundos que tardaría en cruzar la pantalla entera, para mantener el mismo ritmo de antes
 
     def __init__(self, W, H, fps, rng):
         super().__init__(W, H, fps, rng)
         esp = self.dir == -1
         self.frames = [_reducir(dibujar_gusano(SS * 0.6 * self.escala, i / 16), esp) for i in range(16)]
         self.ancho = self.frames[0].width
-        self.duracion = int(self.SEG * fps)
+
+        self.objetivo = 0 if self.dir == 1 else 1  # la primera rana que se cruza según hacia dónde va
+        self.x_boca = X_RANAS[self.objetivo] * W
+        self.y_boca = 0.66 * H  # dentro de la boca, hacia el labio inferior (no por encima, hacia los ojos)
+        self.y_suelo = Y_FRENTE * H
+
+        self.x_inicio = -self.ancho / 2 if self.dir == 1 else W + self.ancho / 2
+        alcance = 0.045 * W  # desde aquí dispara la lengua, en vez de arrastrarse hasta la propia boca
+        self.x_parada = self.x_boca + (-alcance if self.dir == 1 else alcance)
+
+        self.seg_arrastre = max(1.0, abs(self.x_parada - self.x_inicio) / W * self.VEL)
+        self.frame_captura = int(self.seg_arrastre * fps)
+        self.seg_lengua = 0.4
+        self.duracion = self.frame_captura + int(self.seg_lengua * fps)
+
+    def _lengua(self, tx, ty):
+        """Lienzo pequeño con la lengua (línea + punta redonda) desde la boca hasta (tx, ty)."""
+        pad = max(3, int(6 * self.escala))
+        x0, y0 = self.x_boca, self.y_boca
+        minx, maxx = min(x0, tx) - pad, max(x0, tx) + pad
+        miny, maxy = min(y0, ty) - pad, max(y0, ty) + pad
+        w, h = max(1, int(maxx - minx)), max(1, int(maxy - miny))
+        img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
+        rosa = (225, 95, 115)
+        ancho = max(3, int(9 * self.escala))
+        d.line([(x0 - minx, y0 - miny), (tx - minx, ty - miny)], fill=rosa, width=ancho)
+        r = ancho * 1.3
+        d.ellipse([tx - minx - r, ty - miny - r, tx - minx + r, ty - miny + r], fill=rosa)
+        return img, int(minx), int(miny)
 
     def sprites(self, t):
-        x = self.x_lineal(t, self.ancho, self.SEG)
-        im = self.frames[(t // 2) % 16]
-        return [(im, int(x), int(Y_FRENTE * self.H) - im.height)]
+        if t < self.frame_captura:
+            p = t / max(self.frame_captura, 1)
+            x = self.x_inicio + p * (self.x_parada - self.x_inicio)
+            im = self.frames[(t // 2) % 16]
+            return [(im, int(x - self.ancho / 2), int(self.y_suelo) - im.height)]
+
+        # lengüetazo: dispara rápido, agarra y recoge (más lento, como si cargara con la presa)
+        t2 = t - self.frame_captura
+        total = max(self.duracion - self.frame_captura, 1)
+        p = min(t2 / total, 1.0)
+        ext = p / 0.3 if p < 0.3 else max(0.0, 1 - (p - 0.3) / 0.7)
+        tx = self.x_boca + (self.x_parada - self.x_boca) * ext
+        ty = self.y_boca + (self.y_suelo - self.y_boca) * ext
+
+        lengua, mx, my = self._lengua(tx, ty)
+        out = [(lengua, mx, my)]
+        if ext > 0.03:  # el gusano va pegado a la punta hasta que casi ha vuelto a la boca
+            im = self.frames[0]
+            out.append((im, int(tx - self.ancho / 2), int(ty - im.height / 2)))
+        return out
 
     def x_interes(self, t):
-        return self.x_lineal(t, self.ancho, self.SEG) + self.ancho / 2
+        if t < self.frame_captura:
+            p = t / max(self.frame_captura, 1)
+            return self.x_inicio + p * (self.x_parada - self.x_inicio)
+        return None
+
+    def boca_forzada(self, t):
+        """(índice_rana, estado_boca): abre un poco la boca al lanzar la lengua, cierra al tragar."""
+        if t < self.frame_captura:
+            return None
+        t2 = t - self.frame_captura
+        total = max(self.duracion - self.frame_captura, 1)
+        p = min(t2 / total, 1.0)
+        ext = p / 0.3 if p < 0.3 else max(0.0, 1 - (p - 0.3) / 0.7)
+        return (self.objetivo, 1 if ext > 0.03 else 0)
 
 
 class Ovejas(Evento):
     """Un rebaño pasturando despacio por el campo, con un perro que lo persigue de un lado a otro."""
     capa = "fondo"
-    SEG = 19
+    SEG = 24  # 19 / 0.8: van a un 80% de la velocidad de antes
 
     def __init__(self, W, H, fps, rng):
         super().__init__(W, H, fps, rng)
@@ -401,14 +466,14 @@ class Ovejas(Evento):
         self.ovejas = [(rng.uniform(-0.09, 0.09) * W, rng.randrange(12)) for _ in range(n)]
         self.frames_oveja = pasto
         self.perro = [_reducir(dibujar_perro(k * 1.1, p), esp) for p in range(4)]
-        self.y = (Y_CAMI - 0.05) * H
+        self.y = (Y_CAMI - 0.01) * H  # cerca del camí, no sobre la pared de marjada
         self.duracion = int(self.SEG * fps)
 
     def _x_rebano(self, t):
         return self.x_lineal(t, self.ancho * 2, self.SEG)
 
     def _x_perro(self, t):
-        return self._x_rebano(t) + math.sin(t / self.fps * 1.3) * 0.12 * self.W
+        return self._x_rebano(t) + math.sin(t / self.fps * 1.04) * 0.12 * self.W
 
     def sprites(self, t):
         xb = self._x_rebano(t)

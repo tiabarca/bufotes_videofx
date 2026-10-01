@@ -230,12 +230,19 @@ def main():
         for i in range(n):
             ev_idx = activo[i]
             x_ev = None
+            boca_forzada = None
             if ev_idx is not None:
                 ini, ev = agenda[ev_idx]
-                x_ev = ev.x_interes(i - ini)
+                t_ev = i - ini
+                x_ev = ev.x_interes(t_ev)
+                forzar = getattr(ev, "boca_forzada", None)
+                if forzar is not None:
+                    boca_forzada = forzar(t_ev)
             estado = []
             for r in (0, 1):
                 b = int(boca[r][i])
+                if boca_forzada is not None and boca_forzada[0] == r:
+                    b = boca_forzada[1]
                 bote = BOTE_POR_BOCA[b]
                 resp = round((math.sin(2 * math.pi * i / periodo_resp[r]) + 1) * 1.5)  # 0..3
                 if x_ev is not None and -0.05 * W < x_ev < 1.05 * W:
