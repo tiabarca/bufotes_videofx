@@ -28,9 +28,10 @@ from PIL import Image, ImageDraw
 
 from audio import (FFMPEG, cargar_audio, centroide_por_fotograma, diagnostico, estados_boca,
                     nivel_por_fotograma, tasa_cruces_por_fotograma)
-from escena import (X_RANAS, Nubes, dibujar_canas, dibujar_microfonos, dibujar_nenufares, dibujar_reflejos,
-                     fondo_mallorquin, generar_canas, generar_microfonos, generar_nenufares, generar_reflejos)
-from eventos import TIPOS, programar_eventos
+from escena import (X_RANAS, Nubes, dibujar_canas, dibujar_microfonos, dibujar_molino, dibujar_nenufares,
+                     dibujar_reflejos, fondo_mallorquin, generar_canas, generar_microfonos, generar_molino,
+                     generar_nenufares, generar_reflejos)
+from eventos import SOLAPABLES, TIPOS, programar_eventos
 from personajes import cargar_sprites
 
 
@@ -148,15 +149,26 @@ def main():
     reflejos = generar_reflejos(W, H, semilla)
     nenufares = generar_nenufares(W, H, semilla)
     micros = generar_microfonos(W, H, H * 0.875, escala)
+    molino = generar_molino(W, H)
 
-    agenda = programar_eventos(n, fps, W, H, args.eventos, args.eventos_cada, semilla)
-    activo = [None] * n  # índice del evento activo en cada fotograma
-    for idx, (ini, ev) in enumerate(agenda):
-        for i in range(ini, min(n, ini + ev.duracion)):
-            activo[i] = idx
-    if agenda:
+    tipos_normales = [t for t in args.eventos if t not in SOLAPABLES]
+    tipos_solapables = [t for t in args.eventos if t in SOLAPABLES]
+    agenda = programar_eventos(n, fps, W, H, tipos_normales, args.eventos_cada, semilla)
+    # los solapables son un chiste puntual, no un relleno constante: mucho más espaciados
+    agenda2 = programar_eventos(n, fps, W, H, tipos_solapables, args.eventos_cada * 5, semilla + 5000)
+
+    def _activos(agenda_):
+        activo_ = [None] * n
+        for idx, (ini, ev) in enumerate(agenda_):
+            for i in range(ini, min(n, ini + ev.duracion)):
+                activo_[i] = idx
+        return activo_
+
+    activo = _activos(agenda)
+    activo2 = _activos(agenda2)
+    if agenda or agenda2:
         resumen = {}
-        for _, ev in agenda:
+        for _, ev in agenda + agenda2:
             nombre = type(ev).__name__.lower()
             resumen[nombre] = resumen.get(nombre, 0) + 1
         print(f"  Eventos: {', '.join(f'{v} {k}' for k, v in resumen.items())} (semilla {semilla})")
@@ -183,28 +195,27 @@ def main():
             y = anclas[r][1] - spr.height - int(bote * 4 * escala)
             img.paste(spr, (x, y), spr)
 
-    def componer(i, estado, ev_idx):
+    def componer(i, estado, activos):
         img = fondo.copy()
         draw = ImageDraw.Draw(img)
         for spr, x, y in nubes.sprites(i):
             img.paste(spr, (x, y), spr)
         t_seg = i / fps
+        dibujar_molino(draw, molino, t_seg)
         dibujar_canas(draw, canas, t_seg, H)
         dibujar_reflejos(draw, reflejos, t_seg, W)
         dibujar_nenufares(img, nenufares)
 
-        ev, t_ev = None, 0
-        if ev_idx is not None:
-            ini, ev = agenda[ev_idx]
-            t_ev = i - ini
+        for ev, t_ev in activos:
             if ev.capa == "fondo":
                 for im, x, y in ev.sprites(t_ev):
                     img.paste(im, (x, y), im)
         pegar_ranas(img, estado)
         dibujar_microfonos(img, micros)
-        if ev is not None and ev.capa == "frente":
-            for im, x, y in ev.sprites(t_ev):
-                img.paste(im, (x, y), im)
+        for ev, t_ev in activos:
+            if ev.capa == "frente":
+                for im, x, y in ev.sprites(t_ev):
+                    img.paste(im, (x, y), im)
         return img.tobytes()
 
     # --- ffmpeg: fotogramas crudos por stdin + audio
@@ -228,16 +239,23 @@ def main():
     margen_mirada = 0.06 * W
     try:
         for i in range(n):
-            ev_idx = activo[i]
+            activos = []
+            for agenda_, activo_ in ((agenda, activo), (agenda2, activo2)):
+                idx = activo_[i]
+                if idx is not None:
+                    ini, ev = agenda_[idx]
+                    activos.append((ev, i - ini))
+
             x_ev = None
             boca_forzada = None
-            if ev_idx is not None:
-                ini, ev = agenda[ev_idx]
-                t_ev = i - ini
-                x_ev = ev.x_interes(t_ev)
-                forzar = getattr(ev, "boca_forzada", None)
-                if forzar is not None:
-                    boca_forzada = forzar(t_ev)
+            for ev, t_ev in activos:  # la agenda principal manda sobre la solapable si ambas opinan
+                if x_ev is None:
+                    x_ev = ev.x_interes(t_ev)
+                if boca_forzada is None:
+                    forzar = getattr(ev, "boca_forzada", None)
+                    if forzar is not None:
+                        boca_forzada = forzar(t_ev)
+
             estado = []
             for r in (0, 1):
                 b = int(boca[r][i])
@@ -251,7 +269,7 @@ def main():
                 else:
                     mira = 1 if r == 0 else -1  # se miran entre ellas
                 estado.append((b, not parpadeo[r][i], mira, bote, resp))
-            proc.stdin.write(componer(i, tuple(estado), ev_idx))
+            proc.stdin.write(componer(i, tuple(estado), activos))
             if i % (fps * 60) == 0 and i:
                 v = i / (time.time() - t0)
                 print(f"  {i / fps / 60:.0f} min · {v:.0f} fps · faltan ~{(n - i) / v / 60:.1f} min")

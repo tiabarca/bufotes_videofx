@@ -162,6 +162,21 @@ def _finestra(d, x, y, w, h, abierta):
             d.line([(x, y + h * k / 6), (x + w, y + h * k / 6)], fill=(50, 95, 60), width=SS)
 
 
+def _molino(d, W, H):
+    """Molí de vent mallorquí (d'aiguada): torre baixa, ampla i achaparrada."""
+    pedra, oscuro, tejado = (225, 218, 205), (150, 138, 118), (95, 72, 55)
+    cx = 0.86 * W
+    base = 0.485 * H
+    alto = 0.085 * H  # bajo y achaparrado (antes 0.14*H)
+    top = base - alto
+    ancho_base, ancho_top = 0.034 * W, 0.027 * W  # ancho (antes 0.020/0.013)
+    d.polygon([(cx - ancho_base, base), (cx + ancho_base, base),
+               (cx + ancho_top, top), (cx - ancho_top, top)], fill=pedra, outline=oscuro)
+    d.polygon([(cx - ancho_top * 1.15, top), (cx + ancho_top * 1.15, top), (cx, top - 0.018 * H)], fill=tejado)
+    d.rectangle([cx - 0.008 * W, base - 0.035 * H, cx + 0.008 * W, base], fill=(90, 60, 38))  # puerta
+    d.ellipse([cx - 0.009 * W, base - 0.065 * H, cx + 0.009 * W, base - 0.05 * H], fill=oscuro)  # ventanuco
+
+
 def _possessio(d, W, H, rng):
     """Possessió mallorquina: casa de marès, torre de defensa, portal rodó y persianes verdes."""
     pedra = (206, 182, 142)
@@ -252,6 +267,7 @@ def fondo_mallorquin(W_out, H_out, semilla=11):
     _montanas(img, d, W, H, rng)
     _marjades(d, W, H, rng)
     _possessio(d, W, H, rng)
+    _molino(d, W, H)
 
     # campo seco y camí de tierra
     d.rectangle([0, 0.485 * H, W, H], fill=(186, 176, 104))
@@ -399,16 +415,35 @@ def dibujar_canas(d, canas, t_seg, H):
             d.ellipse([tx - 5, ty, tx + 5, ty + 0.05 * H], fill=(112, 76, 46))
 
 
+def _punto_en_estanque(rng, W, H, y_min_frac, y_max_frac):
+    """
+    Un punto (x, y) dentro del estanque de verdad: el estanque es una elipse,
+    no un rectángulo, así que se estrecha hacia los lados. Sin esto, un rango
+    de "y" fijo deja puntos fuera del agua cerca de los bordes izquierdo/derecho.
+    """
+    cx, cy, rx, ry = 0.5 * W, 1.04 * H, 0.5 * W, 0.31 * H
+    for _ in range(20):
+        x = rng.uniform(0.03, 0.97) * W
+        t = 1 - ((x - cx) / rx) ** 2
+        if t <= 0:
+            continue
+        h = ry * math.sqrt(t)
+        y0, y1 = max(cy - h, y_min_frac * H), min(cy + h, y_max_frac * H)
+        if y1 > y0:
+            return x, rng.uniform(y0, y1)
+    return cx, cy  # de repuesto; con el rango habitual no debería hacer falta
+
+
 def generar_reflejos(W, H, semilla):
     """Parámetros de los brillos del agua (orilla y reflejo de la montaña)."""
     rng = random.Random(semilla)
     reflejos = []
     for _ in range(40):
-        x, y = rng.uniform(0, W), rng.uniform(0.74, 0.93) * H
+        x, y = _punto_en_estanque(rng, W, H, 0.74, 0.93)
         largo = rng.uniform(20, 70)
         reflejos.append((x, y, largo, (118, 172, 196), 2, rng.uniform(0, 2 * math.pi), rng.uniform(2.5, 5.0)))
     for _ in range(14):
-        x, y = rng.uniform(0.2, 0.8) * W, rng.uniform(0.74, 0.8) * H
+        x, y = _punto_en_estanque(rng, W, H, 0.74, 0.8)
         largo = rng.uniform(30, 90)
         reflejos.append((x, y, largo, (92, 142, 166), 3, rng.uniform(0, 2 * math.pi), rng.uniform(3.0, 6.0)))
     return reflejos
@@ -489,6 +524,37 @@ def dibujar_nenufares(img, nenufares):
     """Pega las hojas y flores de nenúfar, por delante del brillo del agua."""
     for sprite, x, y in nenufares:
         img.paste(sprite, (int(x), int(y)), sprite)
+
+
+def generar_molino(W, H):
+    """Centro del eje de la rueda del molino (justo bajo el tejadillo) y el radio de sus aspas."""
+    cx = 0.86 * W
+    base = 0.485 * H
+    top = base - 0.085 * H
+    eje_y = top - 0.008 * H
+    radio = 0.075 * H  # aspas largas, típicas del molí d'aiguada mallorquín
+    return (cx, eje_y, radio)
+
+
+def dibujar_molino(d, molino, t_seg):
+    """
+    Rueda del molí d'aiguada: muchas aspas finas en círculo con un aro que une
+    las puntas (la típica "margarida" mallorquina), girando sin parar.
+    """
+    cx, eje_y, radio = molino
+    n_aspas = 12
+    oscuro = (75, 65, 55)
+    ancho = max(2, int(radio * 0.03))
+    ang0 = (t_seg * 50) % 360  # grados por segundo
+    puntas = []
+    for i in range(n_aspas):
+        a = math.radians(ang0 + i * 360 / n_aspas)
+        x2, y2 = cx + math.cos(a) * radio, eje_y + math.sin(a) * radio
+        d.line([(cx, eje_y), (x2, y2)], fill=oscuro, width=ancho)
+        puntas.append((x2, y2))
+    d.line(puntas + [puntas[0]], fill=oscuro, width=max(1, int(ancho * 0.6)))  # aro que une las puntas
+    r_buje = max(3, int(radio * 0.09))
+    d.ellipse([cx - r_buje, eje_y - r_buje, cx + r_buje, eje_y + r_buje], fill=(55, 48, 42))  # buje
 
 
 def _dibujar_microfono(escala):

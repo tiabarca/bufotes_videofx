@@ -199,6 +199,23 @@ def dibujar_gusano(k, fase):
     return img
 
 
+def dibujar_mosquito(k, fase):
+    """Mosquito pequeño, visto de perfil. fase 0..7 anima el aleteo."""
+    w, h = int(44 * k), int(30 * k)
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    cuerpo, ala = (45, 42, 44), (215, 220, 230, 150)
+    bate = 6 * abs(math.sin(fase / 4 * math.pi))  # aleteo rápido
+
+    d.line([(18 * k, 15 * k), (2 * k, 10 * k)], fill=cuerpo, width=max(1, int(1.2 * k)))  # trompa
+    d.ellipse([16 * k, 9 * k, 32 * k, 19 * k], fill=cuerpo)  # cuerpo
+    d.ellipse([20 * k, (4 - bate) * k, 40 * k, (14 - bate) * k], fill=ala)  # ala arriba
+    d.ellipse([20 * k, (14 + bate) * k, 40 * k, (24 + bate) * k], fill=ala)  # ala abajo
+    for i in range(3):  # patas finas
+        d.line([((20 + i * 3) * k, 18 * k), ((14 + i * 3) * k, 28 * k)], fill=cuerpo, width=max(1, int(k)))
+    return img
+
+
 def dibujar_oveja(k, pasto=0.0):
     """Oveja de perfil, lanuda. pasto 0..1 agacha la cabeza a pastar. Mira a la derecha."""
     w, h = int(90 * k), int(68 * k)
@@ -234,6 +251,165 @@ def dibujar_perro(k, paso=0):
     d.ellipse([70 * k, 12 * k, 96 * k, 36 * k], fill=pelo, outline=oscuro, width=max(1, int(2 * k)))  # cabeza
     d.polygon([(78 * k, 10 * k), (82 * k, -2 * k), (88 * k, 12 * k)], fill=oscuro)  # oreja
     d.ellipse([90 * k, 20 * k, 96 * k, 26 * k], fill=(30, 25, 20))  # morro
+    return img
+
+
+def dibujar_xeremier(k, paso):
+    """Xeremier: toca la xeremia (gaita mallorquina) mientras camina. paso 0..3 anima las piernas."""
+    w, h = int(120 * k), int(130 * k)
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    piel, camisa, oscuro = (228, 182, 150), (95, 70, 140), (40, 36, 40)
+    bolsa, madera = (190, 170, 90), (120, 85, 55)
+
+    def E(x0, y0, x1, y1, **kw):
+        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
+
+    def R(x0, y0, x1, y1, **kw):
+        d.rectangle([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
+
+    osc = [0, 10, 0, -10][paso % 4]
+    for px, fase in ((38, 1), (58, -1)):
+        dx = osc * fase
+        d.polygon([((px - 6) * k, 78 * k), ((px + 6) * k, 78 * k), ((px + 4 + dx) * k, 118 * k),
+                   ((px - 8 + dx) * k, 118 * k)], fill=oscuro)
+    R(26, 42, 70, 82, fill=camisa)
+    E(30, 10, 64, 44, fill=piel)
+    d.chord([26 * k, 2 * k, 68 * k, 26 * k], 180, 360, fill=(90, 80, 70))
+
+    E(58, 46, 94, 80, fill=bolsa, outline=oscuro, width=max(1, int(1.5 * k)))  # bolsa
+    d.line([(80 * k, 48 * k), (100 * k, 16 * k)], fill=madera, width=max(1, int(4 * k)))  # roncón
+    d.line([(68 * k, 76 * k), (72 * k, 108 * k)], fill=madera, width=max(1, int(4 * k)))  # puntero
+    d.line([(46 * k, 24 * k), (62 * k, 50 * k)], fill=madera, width=max(1, int(3 * k)))  # soplador
+    d.line([(26 * k, 50 * k), (64 * k, 72 * k)], fill=piel, width=max(1, int(6 * k)))  # brazo
+    return img
+
+
+def dibujar_fabioler(k, paso):
+    """Flabiolaire: toca el flabiol con una mano y el tamborí con la otra. paso 0..3 anima las piernas."""
+    w, h = int(100 * k), int(130 * k)
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    piel, camisa, oscuro = (228, 182, 150), (60, 110, 90), (40, 36, 40)
+    madera, parche = (120, 85, 55), (225, 215, 195)
+
+    def E(x0, y0, x1, y1, **kw):
+        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
+
+    def R(x0, y0, x1, y1, **kw):
+        d.rectangle([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
+
+    osc = [0, 10, 0, -10][paso % 4]
+    for px, fase in ((34, 1), (54, -1)):
+        dx = osc * fase
+        d.polygon([((px - 6) * k, 78 * k), ((px + 6) * k, 78 * k), ((px + 4 + dx) * k, 118 * k),
+                   ((px - 8 + dx) * k, 118 * k)], fill=oscuro)
+    R(22, 42, 66, 82, fill=camisa)
+    E(26, 10, 60, 44, fill=piel)
+    d.chord([22 * k, 2 * k, 64 * k, 26 * k], 180, 360, fill=(90, 80, 70))
+
+    d.line([(40 * k, 24 * k), (36 * k, 58 * k)], fill=madera, width=max(1, int(3 * k)))  # flabiol
+    d.line([(20 * k, 46 * k), (36 * k, 40 * k)], fill=piel, width=max(1, int(5 * k)))  # brazo izq
+
+    E(60, 52, 86, 70, fill=parche, outline=oscuro, width=max(1, int(2 * k)))  # tamborí
+    d.line([(66 * k, 50 * k), (76 * k, 34 * k)], fill=madera, width=max(1, int(2.5 * k)))  # baqueta
+    d.line([(66 * k, 48 * k), (56 * k, 58 * k)], fill=piel, width=max(1, int(5 * k)))  # brazo que toca
+    return img
+
+
+def dibujar_payes_baila(k, fase):
+    """Payés bailando un ball de bot: salta con los brazos en alto. fase 0..3."""
+    w, h = int(90 * k), int(135 * k)
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    piel, camisa, pantalon, oscuro = (228, 182, 150), (70, 120, 160), (240, 240, 235), (40, 36, 40)
+
+    def E(x0, y0, x1, y1, **kw):
+        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
+
+    def R(x0, y0, x1, y1, **kw):
+        d.rectangle([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
+
+    bote = [0, -10, 0, -6][fase % 4]
+    abre = [6, 14, 6, 2][fase % 4]
+    for px, sig in ((34, -1), (56, 1)):
+        d.polygon([((px - 6) * k, (72 + bote) * k), ((px + 6) * k, (72 + bote) * k),
+                   ((px + sig * abre + 4) * k, (118 + bote) * k),
+                   ((px + sig * abre - 6) * k, (118 + bote) * k)], fill=pantalon)
+    R(20, 36 + bote, 70, 76 + bote, fill=camisa)
+    E(24, 4 + bote, 58, 38 + bote, fill=piel)
+    d.chord([20 * k, (-4 + bote) * k, 62 * k, (20 + bote) * k], 180, 360, fill=(90, 80, 70))
+    brazos = [18, 30, 18, 8][fase % 4]
+    d.line([(24 * k, (44 + bote) * k), (6 * k, (44 + bote - brazos) * k)], fill=piel, width=max(1, int(6 * k)))
+    d.line([(66 * k, (44 + bote) * k), (84 * k, (44 + bote - brazos) * k)], fill=piel, width=max(1, int(6 * k)))
+    return img
+
+
+def dibujar_payesa_baila(k, fase):
+    """Payesa bailando, con la falda volando y pañuelo en la cabeza. fase 0..3."""
+    w, h = int(90 * k), int(135 * k)
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    piel, blusa, falda, panuelo = (228, 182, 150), (250, 248, 240), (195, 60, 55), (210, 70, 90)
+
+    def E(x0, y0, x1, y1, **kw):
+        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
+
+    def R(x0, y0, x1, y1, **kw):
+        d.rectangle([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
+
+    bote = [0, -10, 0, -6][fase % 4]
+    vuelo = [10, 22, 10, 4][fase % 4]
+    d.polygon([(26 * k, (72 + bote) * k), (64 * k, (72 + bote) * k),
+               ((64 + vuelo) * k, (120 + bote) * k), ((26 - vuelo) * k, (120 + bote) * k)], fill=falda)
+    R(24, 38 + bote, 66, 74 + bote, fill=blusa)
+    E(26, 4 + bote, 58, 36 + bote, fill=piel)
+    d.chord([24 * k, (-6 + bote) * k, 60 * k, (16 + bote) * k], 180, 360, fill=panuelo)
+    brazos = [16, 26, 16, 8][fase % 4]
+    d.line([(26 * k, (44 + bote) * k), (10 * k, (44 + bote - brazos) * k)], fill=piel, width=max(1, int(5 * k)))
+    d.line([(64 * k, (44 + bote) * k), (80 * k, (44 + bote - brazos) * k)], fill=piel, width=max(1, int(5 * k)))
+    return img
+
+
+def dibujar_payes_dret(k, balanceo=0):
+    """Payés de pie y quieto (con un ligero balanceo), plantado delante de la puerta."""
+    w, h = int(70 * k), int(120 * k)
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    piel, camisa, pantalon, oscuro = (228, 182, 150), (70, 120, 160), (90, 80, 70), (40, 36, 40)
+
+    def E(x0, y0, x1, y1, **kw):
+        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
+
+    d.polygon([(26 * k, 70 * k), (32 * k, 70 * k), (30 * k + balanceo, 110 * k), (22 * k + balanceo, 110 * k)],
+              fill=pantalon)
+    d.polygon([(38 * k, 70 * k), (44 * k, 70 * k), (48 * k - balanceo, 110 * k), (40 * k - balanceo, 110 * k)],
+              fill=pantalon)
+    d.rectangle([18 * k, 32 * k, 52 * k, 72 * k], fill=camisa)
+    E(22, 2, 50, 30, fill=piel)
+    d.chord([18 * k, -6 * k, 54 * k, 14 * k], 180, 360, fill=(90, 80, 70))  # gorra
+    d.line([(18 * k, 40 * k), (8 * k, 56 * k)], fill=piel, width=max(1, int(5 * k)))  # brazos
+    d.line([(52 * k, 40 * k), (62 * k, 56 * k)], fill=piel, width=max(1, int(5 * k)))
+    return img
+
+
+def dibujar_payesa_ventana(k, agita):
+    """Payesa asomada a una ventana, amenazando con un palo. agita 0..1: el palo se mueve de lado a lado."""
+    w, h = int(80 * k), int(70 * k)
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    piel, blusa, panuelo, palo = (228, 182, 150), (250, 248, 240), (210, 70, 90), (110, 80, 55)
+
+    def E(x0, y0, x1, y1, **kw):
+        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
+
+    d.rectangle([14 * k, 30 * k, 56 * k, 70 * k], fill=blusa)  # torso asomado
+    E(18, 4, 48, 34, fill=piel)
+    d.chord([14 * k, -4 * k, 52 * k, 18 * k], 180, 360, fill=panuelo)
+    ang = math.radians(-35 + agita * 55)  # el palo se agita de lado a lado
+    ex, ey = 50 * k + math.cos(ang) * 28 * k, 20 * k + math.sin(ang) * 28 * k
+    d.line([(48 * k, 26 * k), (ex, ey)], fill=palo, width=max(1, int(4 * k)))
+    d.line([(48 * k, 26 * k), (56 * k, 36 * k)], fill=piel, width=max(1, int(5 * k)))  # brazo sujetando
     return img
 
 
@@ -370,7 +546,60 @@ class Pajaros(Evento):
         return self._pos(t, 0)[0] + self.ancho / 2
 
 
-class Gusano(Evento):
+class _Presa(Evento):
+    """
+    Base para "bichos que una rana caza con la lengua": cada subclase se
+    encarga de su propio arrastre/vuelo hasta `frame_captura`, y esta clase
+    pone en común la fase de lengüetazo (dispara, agarra, recoge) y el aviso
+    a ranas.py para que la rana abra la boca mientras dura.
+
+    Las subclases deben fijar en __init__: ancho, objetivo (índice de rana),
+    x_boca, y_boca, y_suelo (punto donde se la atrapa), x_parada,
+    frame_captura y duracion.
+    """
+
+    def _ext_lengua(self, t):
+        """0 = lengua recogida, 1 = del todo estirada. Dispara rápido, recoge más despacio."""
+        t2 = t - self.frame_captura
+        total = max(self.duracion - self.frame_captura, 1)
+        p = min(t2 / total, 1.0)
+        return p / 0.3 if p < 0.3 else max(0.0, 1 - (p - 0.3) / 0.7)
+
+    def _lengua(self, tx, ty):
+        """Lienzo pequeño con la lengua (línea + punta redonda) desde la boca hasta (tx, ty)."""
+        pad = max(3, int(6 * self.escala))
+        x0, y0 = self.x_boca, self.y_boca
+        minx, maxx = min(x0, tx) - pad, max(x0, tx) + pad
+        miny, maxy = min(y0, ty) - pad, max(y0, ty) + pad
+        w, h = max(1, int(maxx - minx)), max(1, int(maxy - miny))
+        img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
+        rosa = (225, 95, 115)
+        ancho = max(3, int(9 * self.escala))
+        d.line([(x0 - minx, y0 - miny), (tx - minx, ty - miny)], fill=rosa, width=ancho)
+        r = ancho * 1.3
+        d.ellipse([tx - minx - r, ty - miny - r, tx - minx + r, ty - miny + r], fill=rosa)
+        return img, int(minx), int(miny)
+
+    def _sprites_captura(self, t, im_presa):
+        """Lengua + la presa enganchada en la punta (mientras no haya vuelto casi del todo)."""
+        ext = self._ext_lengua(t)
+        tx = self.x_boca + (self.x_parada - self.x_boca) * ext
+        ty = self.y_boca + (self.y_suelo - self.y_boca) * ext
+        lengua, mx, my = self._lengua(tx, ty)
+        out = [(lengua, mx, my)]
+        if ext > 0.03:
+            out.append((im_presa, int(tx - im_presa.width / 2), int(ty - im_presa.height / 2)))
+        return out
+
+    def boca_forzada(self, t):
+        """(índice_rana, estado_boca): abre un poco la boca al lanzar la lengua, cierra al tragar."""
+        if t < self.frame_captura:
+            return None
+        return (self.objetivo, 1 if self._ext_lengua(t) > 0.03 else 0)
+
+
+class Gusano(_Presa):
     """Un gusano se arrastra hacia la primera rana que encuentra; al llegar, se lo come de un lengüetazo."""
     capa = "frente"
     VEL = 20  # segundos que tardaría en cruzar la pantalla entera, para mantener el mismo ritmo de antes
@@ -395,43 +624,13 @@ class Gusano(Evento):
         self.seg_lengua = 0.4
         self.duracion = self.frame_captura + int(self.seg_lengua * fps)
 
-    def _lengua(self, tx, ty):
-        """Lienzo pequeño con la lengua (línea + punta redonda) desde la boca hasta (tx, ty)."""
-        pad = max(3, int(6 * self.escala))
-        x0, y0 = self.x_boca, self.y_boca
-        minx, maxx = min(x0, tx) - pad, max(x0, tx) + pad
-        miny, maxy = min(y0, ty) - pad, max(y0, ty) + pad
-        w, h = max(1, int(maxx - minx)), max(1, int(maxy - miny))
-        img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-        d = ImageDraw.Draw(img)
-        rosa = (225, 95, 115)
-        ancho = max(3, int(9 * self.escala))
-        d.line([(x0 - minx, y0 - miny), (tx - minx, ty - miny)], fill=rosa, width=ancho)
-        r = ancho * 1.3
-        d.ellipse([tx - minx - r, ty - miny - r, tx - minx + r, ty - miny + r], fill=rosa)
-        return img, int(minx), int(miny)
-
     def sprites(self, t):
         if t < self.frame_captura:
             p = t / max(self.frame_captura, 1)
             x = self.x_inicio + p * (self.x_parada - self.x_inicio)
             im = self.frames[(t // 2) % 16]
             return [(im, int(x - self.ancho / 2), int(self.y_suelo) - im.height)]
-
-        # lengüetazo: dispara rápido, agarra y recoge (más lento, como si cargara con la presa)
-        t2 = t - self.frame_captura
-        total = max(self.duracion - self.frame_captura, 1)
-        p = min(t2 / total, 1.0)
-        ext = p / 0.3 if p < 0.3 else max(0.0, 1 - (p - 0.3) / 0.7)
-        tx = self.x_boca + (self.x_parada - self.x_boca) * ext
-        ty = self.y_boca + (self.y_suelo - self.y_boca) * ext
-
-        lengua, mx, my = self._lengua(tx, ty)
-        out = [(lengua, mx, my)]
-        if ext > 0.03:  # el gusano va pegado a la punta hasta que casi ha vuelto a la boca
-            im = self.frames[0]
-            out.append((im, int(tx - self.ancho / 2), int(ty - im.height / 2)))
-        return out
+        return self._sprites_captura(t, self.frames[0])
 
     def x_interes(self, t):
         if t < self.frame_captura:
@@ -439,15 +638,62 @@ class Gusano(Evento):
             return self.x_inicio + p * (self.x_parada - self.x_inicio)
         return None
 
-    def boca_forzada(self, t):
-        """(índice_rana, estado_boca): abre un poco la boca al lanzar la lengua, cierra al tragar."""
+
+class Mosquito(_Presa):
+    """
+    Un mosquito vuela errático por delante de las ranas; en cuanto ha pasado
+    de la mitad de la pantalla, la rana hacia la que va se lo come de un
+    lengüetazo (igual que el gusano, pero volando en vez de arrastrándose).
+    """
+    capa = "frente"
+    VEL = 11  # vuela bastante más rápido que repta el gusano
+
+    def __init__(self, W, H, fps, rng):
+        super().__init__(W, H, fps, rng)
+        self.frames = [_reducir(dibujar_mosquito(SS * 0.35 * self.escala, f)) for f in range(8)]
+        self.ancho = self.frames[0].width
+
+        # al pasar de la mitad va hacia la rana del lado contrario a por donde entró
+        self.objetivo = 1 if self.dir == 1 else 0
+        self.x_boca = X_RANAS[self.objetivo] * W
+        self.y_boca = 0.66 * H
+        self.y_base = rng.uniform(0.42, 0.58) * H
+        self.y_suelo = self.y_base
+
+        self.x_inicio = -self.ancho / 2 if self.dir == 1 else W + self.ancho / 2
+        alcance = 0.04 * W
+        self.x_parada = self.x_boca + (-alcance if self.dir == 1 else alcance)
+
+        self.amp_x = rng.uniform(0.01, 0.02) * W
+        self.amp_y = rng.uniform(0.03, 0.05) * H
+        self.f1, self.f2 = rng.uniform(2.2, 3.4), rng.uniform(5.0, 7.5)
+        self.fase1, self.fase2 = rng.uniform(0, 2 * math.pi), rng.uniform(0, 2 * math.pi)
+
+        self.seg_vuelo = max(1.0, abs(self.x_parada - self.x_inicio) / W * self.VEL)
+        self.frame_captura = int(self.seg_vuelo * fps)
+        self.seg_lengua = 0.35
+        self.duracion = self.frame_captura + int(self.seg_lengua * fps)
+
+    def _pos(self, t):
+        p = min(t, self.frame_captura) / max(self.frame_captura, 1)
+        s = t / self.fps
+        x = self.x_inicio + p * (self.x_parada - self.x_inicio) + self.amp_x * math.sin(
+            2 * math.pi * self.f1 * s + self.fase1)
+        y = self.y_base + self.amp_y * (0.6 * math.sin(2 * math.pi * self.f1 * 0.7 * s + self.fase1) +
+                                         0.4 * math.sin(2 * math.pi * self.f2 * s + self.fase2))
+        return x, y
+
+    def sprites(self, t):
         if t < self.frame_captura:
-            return None
-        t2 = t - self.frame_captura
-        total = max(self.duracion - self.frame_captura, 1)
-        p = min(t2 / total, 1.0)
-        ext = p / 0.3 if p < 0.3 else max(0.0, 1 - (p - 0.3) / 0.7)
-        return (self.objetivo, 1 if ext > 0.03 else 0)
+            x, y = self._pos(t)
+            im = self.frames[(t // 2) % len(self.frames)]
+            return [(im, int(x - self.ancho / 2), int(y - im.height / 2))]
+        return self._sprites_captura(t, self.frames[0])
+
+    def x_interes(self, t):
+        if t < self.frame_captura:
+            return self._pos(t)[0]
+        return None
 
 
 class Ovejas(Evento):
@@ -489,7 +735,165 @@ class Ovejas(Evento):
         return self._x_perro(t)
 
 
-TIPOS = {"tractor": Tractor, "cerdo": Cerdo, "pajaros": Pajaros, "gusano": Gusano, "ovejas": Ovejas}
+class Xeremiers(Evento):
+    """
+    Una colla de xeremiers: dos músicos (xeremier y flabiolaire) y una
+    parella de ball de bot. Entran por un lado, se acercan solo hasta un
+    25% del ancho de pantalla, se quedan un rato tocando y bailando, y
+    vuelven por donde han venido. Músicos y bailadors van cada uno en su
+    propio grupo apretado, con un hueco claro entre los dos grupos.
+    """
+    capa = "fondo"
+    SEG_ENTRA, SEG_TOCA, SEG_SALE = 4.0, 9.0, 4.0
+
+    def __init__(self, W, H, fps, rng):
+        super().__init__(W, H, fps, rng)
+        k = SS * 0.65 * self.escala
+        esp = self.dir == -1
+        self.xeremier = [_reducir(dibujar_xeremier(k, p), esp) for p in range(4)]
+        self.fabioler = [_reducir(dibujar_fabioler(k, p), esp) for p in range(4)]
+        self.payes = [_reducir(dibujar_payes_baila(k, f), esp) for f in range(4)]
+        self.payesa = [_reducir(dibujar_payesa_baila(k, f), esp) for f in range(4)]
+
+        self.y = (Y_CAMI - 0.02) * H
+        ancho_grupo = 0.22 * W
+        alcance = 0.25 * W
+        # músicos por delante en el sentido de la marcha, bailadors detrás;
+        # apretados dentro de cada grupo, con hueco claro entre ambos
+        signo = 1 if self.dir == 1 else -1
+        self.offsets = [
+            (self.xeremier, signo * 10, 0, "paso"),
+            (self.fabioler, signo * 50, 0, "paso"),
+            (self.payes, signo * -70, -10, "fase"),
+            (self.payesa, signo * -30, -10, "fase"),
+        ]
+        self.x_fuera = -ancho_grupo if self.dir == 1 else W + ancho_grupo
+        self.x_dentro = alcance if self.dir == 1 else W - alcance
+
+        self.f_entra = self.SEG_ENTRA * fps
+        self.f_toca = self.f_entra + self.SEG_TOCA * fps
+        self.duracion = int(self.f_toca + self.SEG_SALE * fps)
+
+    @staticmethod
+    def _suave(p):
+        return p * p * (3 - 2 * p)
+
+    def _x_grupo(self, t):
+        if t < self.f_entra:
+            p = self._suave(t / self.f_entra)
+            return self.x_fuera + p * (self.x_dentro - self.x_fuera)
+        if t < self.f_toca:
+            return self.x_dentro
+        p = self._suave((t - self.f_toca) / (self.duracion - self.f_toca))
+        return self.x_dentro + p * (self.x_fuera - self.x_dentro)
+
+    def sprites(self, t):
+        cx = self._x_grupo(t)
+        caminando = t < self.f_entra or t >= self.f_toca
+        paso = (t // 4) % 4 if caminando else 0  # quietos: piernas paradas, no marcando el paso
+        fase = (t // 5) % 4
+        out = []
+        for frames, dx, dy, anim in self.offsets:
+            im = frames[paso if anim == "paso" else fase]
+            out.append((im, int(cx + dx - im.width / 2), int(self.y + dy - im.height)))
+        return out
+
+    def x_interes(self, t):
+        return self._x_grupo(t)
+
+
+class Bronca(Evento):
+    """
+    Al pagès li criden des de casa: surt per la porta i es queda plantat a
+    fora, mentre la seva dona l'esbronca des de la finestra amb un pal
+    alçat. Luego entran los dos, él primero. Es "solapable": puede verse a
+    la vez que el evento normal de turno (tractor, ovejas...), no le hace
+    falta un hueco propio en la agenda principal.
+    """
+    capa = "fondo"
+    SEG_POP = 0.4
+    SEG_PAYES_FUERA = 5.0
+    SEG_PAYESA_RETRASO = 0.8
+    SEG_PAYESA_DURA = 4.0
+
+    def __init__(self, W, H, fps, rng):
+        super().__init__(W, H, fps, rng)
+        k = SS * 0.22 * self.escala  # pequeños: son figuras lejanas junto a una casa de dos plantas
+        self.payes = [_reducir(dibujar_payes_dret(k, d)) for d in (-2, 0, 2, 0)]
+        self.payesa = [_reducir(dibujar_payesa_ventana(k, a / 3)) for a in range(4)]
+
+        base = 0.485 * H
+        cx = 0.5 * W
+        self.x_puerta, self.y_puerta = cx - 0.01 * W, base
+        self.x_ventana, self.y_ventana = cx, (base - 0.10 * H) + 0.024 * H
+
+        self.f_payes_entra = int(self.SEG_POP * fps)
+        self.f_payes_sale = self.f_payes_entra + int(self.SEG_PAYES_FUERA * fps)
+        self.f_payes_fin = self.f_payes_sale + int(self.SEG_POP * fps)
+
+        self.f_payesa_ini = self.f_payes_entra + int(self.SEG_PAYESA_RETRASO * fps)
+        self.f_payesa_fin = min(self.f_payesa_ini + int(self.SEG_PAYESA_DURA * fps), self.f_payes_fin)
+        self.f_pop = int(self.SEG_POP * fps)
+
+        self.duracion = self.f_payes_fin
+
+    @staticmethod
+    def _con_alpha(img, factor):
+        if factor >= 0.999:
+            return img
+        im2 = img.copy()
+        im2.putalpha(im2.getchannel("A").point(lambda v: int(v * factor)))
+        return im2
+
+    def _factor_payes(self, t):
+        if t < self.f_payes_entra:
+            return t / max(self.f_payes_entra, 1)
+        if t < self.f_payes_sale:
+            return 1.0
+        if t < self.f_payes_fin:
+            return 1.0 - (t - self.f_payes_sale) / max(self.f_payes_fin - self.f_payes_sale, 1)
+        return 0.0
+
+    def _factor_payesa(self, t):
+        if t < self.f_payesa_ini or t >= self.f_payesa_fin:
+            return 0.0
+        d = t - self.f_payesa_ini
+        if d < self.f_pop:
+            return d / max(self.f_pop, 1)
+        restante = self.f_payesa_fin - t
+        if restante < self.f_pop:
+            return restante / max(self.f_pop, 1)
+        return 1.0
+
+    def sprites(self, t):
+        out = []
+        fp = self._factor_payes(t)
+        if fp > 0.02:
+            im = self._con_alpha(self.payes[(t // 6) % len(self.payes)], fp)
+            out.append((im, int(self.x_puerta - im.width / 2), int(self.y_puerta - im.height)))
+        fa = self._factor_payesa(t)
+        if fa > 0.02:
+            im = self._con_alpha(self.payesa[(t // 4) % len(self.payesa)], fa)
+            out.append((im, int(self.x_ventana - im.width / 2), int(self.y_ventana - im.height / 2)))
+        return out
+
+    def x_interes(self, t):
+        if self._factor_payesa(t) > 0.3:
+            return self.x_ventana
+        if self._factor_payes(t) > 0.3:
+            return self.x_puerta
+        return None
+
+
+TIPOS = {"tractor": Tractor, "cerdo": Cerdo, "pajaros": Pajaros, "gusano": Gusano, "ovejas": Ovejas,
+         "xeremiers": Xeremiers, "mosquito": Mosquito, "bronca": Bronca}
+
+# frecuencia relativa de cada tipo al elegir el siguiente evento (por defecto 1)
+PESOS = {"mosquito": 3}
+
+# tipos que no necesitan un hueco propio en la agenda principal: se programan
+# en su propia línea de tiempo y pueden coincidir con cualquier otro evento
+SOLAPABLES = {"bronca"}
 
 
 def programar_eventos(n_frames, fps, W, H, tipos, cada, semilla):
@@ -505,7 +909,8 @@ def programar_eventos(n_frames, fps, W, H, tipos, cada, semilla):
     anterior = None
     while t < n_frames:
         opciones = [x for x in tipos if x != anterior] or tipos
-        tipo = rng.choice(opciones)
+        pesos = [PESOS.get(x, 1) for x in opciones]
+        tipo = rng.choices(opciones, weights=pesos)[0]
         ev = TIPOS[tipo](W, H, fps, rng)
         if t + ev.duracion > n_frames:
             break
