@@ -61,9 +61,11 @@ python ranas.py --a audio/A.mp3 --b audio/B.mp3 --mezcla audio/master.mp3 --umbr
 | `--semilla 42` | Repite exactamente el mismo orden de eventos. |
 | `--accesorios sombrero gafas` | Accesorio de cada rana: `sombrero`, `gafas` o `nada`. |
 | `--tamano-ranas 0.8` | Tamaño de las ranas. |
-| `--titulo "Bufotes Episodio 94"` | Título de entrada: aparece con un fundido los primeros segundos, con la tipografía del logo. |
-| `--titulo-duracion 4` | Cuánto dura en pantalla el título de entrada. |
+| `--titulo "Bufotes Episodio 94"` | Título de entrada: aparece justo tras la portada, con la tipografía del logo. |
+| `--titulo-duracion 10` | Cuánto dura en pantalla el título de entrada. |
 | `--sin-logo` | No poner el logo (`media/logo.png`) en la esquina superior izquierda. |
+| `--sin-portada` | No abrir con la portada (`media/portada.jpeg`) solapada sobre el arranque. |
+| `--portada-duracion 5` | Cuánto tarda la portada en desvanecerse hacia la escena, al principio. |
 | `--sensibilidad`, `--antisangrado` | Ajuste fino de la detección de voz. |
 | `--ancho`, `--alto`, `--fps`, `--crf` | Resolución, fotogramas por segundo y calidad del vídeo. |
 
@@ -77,16 +79,20 @@ audio.py       niveles por fotograma, umbrales, anti-sangrado entre micros
 escena.py      fondo: montañas, marjades con olivos, possessió, estanque
 personajes.py  las dos ranas (bocas, parpadeo, mirada, sombrero, gafas)
 eventos.py     tractor, cerdo, pájaros, gusano, ovejas y la programación aleatoria
-overlay.py     logo (media/logo.png) y título de entrada (media/fuentes/)
+overlay.py     logo, portada de entrada y título (media/logo.png, media/portada.jpeg, media/fuentes/)
 ```
 
-### Logo y título de entrada
+### Logo, portada y título de entrada
 
-El logo de `media/logo.png` sale siempre en la esquina superior izquierda
-(`--sin-logo` lo quita). El título de `--titulo` usa la misma tipografía de
-marcador que el logo y la portada del podcast (Permanent Marker, en
-`media/fuentes/`): aparece con un fundido, se queda `--titulo-duracion`
-segundos y se desvanece. Si el texto no cabe en 2 líneas, la letra se
+El vídeo abre con la portada de `media/portada.jpeg` a pantalla completa
+(ya viene a 16:9, no se recorta ni se deforma), que se desvanece hacia la
+escena en los últimos segundos de `--portada-duracion` (5 s por defecto;
+`--sin-portada` la quita). El logo de `media/logo.png` sale siempre en la
+esquina superior izquierda, por debajo de la portada (`--sin-logo` lo
+quita). El título de `--titulo` aparece justo cuando acaba la portada, con
+la misma tipografía de marcador que el logo y la portada (Permanent
+Marker, en `media/fuentes/`): se queda `--titulo-duracion` segundos (10 s
+por defecto) y se desvanece. Si el texto no cabe en 2 líneas, la letra se
 encoge sola hasta que quepa.
 
 ### Añadir un evento nuevo

@@ -6,12 +6,14 @@ from PIL import Image, ImageDraw, ImageFont
 
 RUTA_FUENTE = os.path.join(os.path.dirname(__file__), "media", "fuentes", "PermanentMarker-Regular.ttf")
 RUTA_LOGO = os.path.join(os.path.dirname(__file__), "media", "logo.png")
+RUTA_PORTADA = os.path.join(os.path.dirname(__file__), "media", "portada.jpeg")
 
 # colores sacados del propio logo: amarillo del rótulo, marino del borde
 AMARILLO = (247, 193, 0, 255)
 MARINO = (6, 26, 48, 255)
 
 SEG_FADE = 0.6  # entrada/salida del título, en segundos
+SEG_FADE_PORTADA = 1.5  # desvanecido de la portada hacia la escena, al final de su duración
 
 
 def cargar_logo(H, ruta=RUTA_LOGO, alto_rel=0.16):
@@ -22,6 +24,22 @@ def cargar_logo(H, ruta=RUTA_LOGO, alto_rel=0.16):
     alto = int(H * alto_rel)
     ancho = int(im.width * alto / im.height)
     return im.resize((ancho, alto), Image.LANCZOS)
+
+
+def cargar_portada(W, H, ruta=RUTA_PORTADA):
+    """Portada tal cual (ya viene a 16:9), encajada a pantalla completa. None si no existe."""
+    if not ruta or not os.path.exists(ruta):
+        return None
+    return Image.open(ruta).convert("RGBA").resize((W, H), Image.LANCZOS)
+
+
+def factor_portada(t_seg, duracion, fade=SEG_FADE_PORTADA):
+    """1 (opaca) hasta el tramo final, donde se desvanece hacia la escena en `fade` segundos."""
+    if t_seg >= duracion:
+        return 0.0
+    if t_seg > duracion - fade:
+        return max(0.0, (duracion - t_seg) / fade)
+    return 1.0
 
 
 def _envolver(texto, fuente, ancho_max, draw):
