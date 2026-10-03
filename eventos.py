@@ -13,6 +13,7 @@ Los fotogramas de cada animación se dibujan una sola vez al empezar.
 """
 
 import math
+import os
 import random
 
 from PIL import Image, ImageDraw
@@ -25,6 +26,24 @@ SS = 2  # supersampling de los sprites
 def _reducir(img, espejo=False):
     img = img.resize((max(1, img.width // SS), max(1, img.height // SS)), Image.LANCZOS)
     return img.transpose(Image.FLIP_LEFT_RIGHT) if espejo else img
+
+
+def _marcos(assets, clave, dibujar_fn, k, params, espejo=False):
+    """
+    Fotogramas de un personaje de evento: uno por valor de `params`, pasado a
+    `dibujar_fn(k, param)`. Si existe `assets/eventos/{clave}_{i}.png` se usa
+    ese PNG en su lugar (reescalado al tamaño que tendría el dibujo por
+    código, así que vale cualquier resolución y funciona a cualquier --alto).
+    Ver exportar_sprites.py para sacar la plantilla de cada personaje.
+    """
+    out = []
+    for i, param in enumerate(params):
+        base = dibujar_fn(k, param)
+        ruta = os.path.join(assets, "eventos", f"{clave}_{i}.png") if assets else None
+        if ruta and os.path.exists(ruta):
+            base = Image.open(ruta).convert("RGBA").resize(base.size, Image.LANCZOS)
+        out.append(_reducir(base, espejo))
+    return out
 
 
 # ----------------------------------------------------------------------------
@@ -420,10 +439,11 @@ def dibujar_payesa_ventana(k, agita):
 class Evento:
     capa = "fondo"
 
-    def __init__(self, W, H, fps, rng):
+    def __init__(self, W, H, fps, rng, assets=None):
         self.W, self.H, self.fps = W, H, fps
         self.dir = rng.choice((1, -1))  # 1: de izquierda a derecha
         self.escala = H / 720
+        self.assets = assets
 
     def x_lineal(self, t, ancho, segundos):
         """Cruza la pantalla de un lado a otro en `segundos`."""
@@ -439,11 +459,11 @@ class Tractor(Evento):
     capa = "fondo"
     SEG = 13
 
-    def __init__(self, W, H, fps, rng):
-        super().__init__(W, H, fps, rng)
+    def __init__(self, W, H, fps, rng, assets=None):
+        super().__init__(W, H, fps, rng, assets)
         k = SS * 0.55 * self.escala
         esp = self.dir == -1
-        self.frames = [_reducir(dibujar_tractor(k, i / 8), esp) for i in range(8)]
+        self.frames = _marcos(assets, "tractor", dibujar_tractor, k, [i / 8 for i in range(8)], esp)
         self.humo = [_reducir(dibujar_humo(k, e / 10)) for e in range(10)]
         self.duracion = int(self.SEG * fps)
         self.ancho = self.frames[0].width
@@ -477,18 +497,20 @@ class Cerdo(Evento):
     capa = "fondo"
     SEG = 11
 
-    def __init__(self, W, H, fps, rng):
-        super().__init__(W, H, fps, rng)
+    def __init__(self, W, H, fps, rng, assets=None):
+        super().__init__(W, H, fps, rng, assets)
         k = SS * 0.75 * self.escala
         esp = self.dir == -1
-        self.cerdo = [_reducir(dibujar_cerdo_corriendo(k * 0.5, p), esp) for p in range(4)]  # el porc, la mitad de grande
+        # el porc, la mitad de grande
+        self.cerdo = _marcos(assets, "cerdo", dibujar_cerdo_corriendo, k * 0.5, list(range(4)), esp)
         self.ancho = self.cerdo[0].width
         n = rng.randint(4, 5)  # una muchedumbre de verdad
         self.payeses = []
         retraso_base = rng.uniform(0.4, 0.55)  # que no le vayan pisando los talones al porc
         for j in range(n):
             arma = "cuchillo" if j % 2 == 0 else "olla"
-            frames = [_reducir(dibujar_payes(k * 0.8, p, arma), esp) for p in range(4)]
+            dibujar = lambda k_, p, arma=arma: dibujar_payes(k_, p, arma)
+            frames = _marcos(assets, f"payes_{arma}", dibujar, k * 0.8, list(range(4)), esp)
             retraso = retraso_base + j * rng.uniform(0.14, 0.22)  # cada uno un poco más atrás, desincronizados
             dy = rng.uniform(-4, 4) * self.escala
             self.payeses.append((frames, retraso, dy))
@@ -516,12 +538,12 @@ class Pajaros(Evento):
     capa = "fondo"
     SEG = 9
 
-    def __init__(self, W, H, fps, rng):
-        super().__init__(W, H, fps, rng)
+    def __init__(self, W, H, fps, rng, assets=None):
+        super().__init__(W, H, fps, rng, assets)
         esp = self.dir == -1
+        params = [0.5 - 0.5 * math.cos(2 * math.pi * i / 8) for i in range(8)]
         self.frames = [
-            [_reducir(dibujar_pajaro(SS * 1.0 * self.escala * s, 0.5 - 0.5 * math.cos(2 * math.pi * i / 8)), esp)
-             for i in range(8)]
+            _marcos(assets, "pajaro", dibujar_pajaro, SS * 1.0 * self.escala * s, params, esp)
             for s in (1.0, 0.8)
         ]
         self.duracion = int(self.SEG * fps)
@@ -604,10 +626,10 @@ class Gusano(_Presa):
     capa = "frente"
     VEL = 20  # segundos que tardaría en cruzar la pantalla entera, para mantener el mismo ritmo de antes
 
-    def __init__(self, W, H, fps, rng):
-        super().__init__(W, H, fps, rng)
+    def __init__(self, W, H, fps, rng, assets=None):
+        super().__init__(W, H, fps, rng, assets)
         esp = self.dir == -1
-        self.frames = [_reducir(dibujar_gusano(SS * 0.6 * self.escala, i / 16), esp) for i in range(16)]
+        self.frames = _marcos(assets, "gusano", dibujar_gusano, SS * 0.6 * self.escala, [i / 16 for i in range(16)], esp)
         self.ancho = self.frames[0].width
 
         self.objetivo = 0 if self.dir == 1 else 1  # la primera rana que se cruza según hacia dónde va
@@ -648,9 +670,9 @@ class Mosquito(_Presa):
     capa = "frente"
     VEL = 11  # vuela bastante más rápido que repta el gusano
 
-    def __init__(self, W, H, fps, rng):
-        super().__init__(W, H, fps, rng)
-        self.frames = [_reducir(dibujar_mosquito(SS * 0.35 * self.escala, f)) for f in range(8)]
+    def __init__(self, W, H, fps, rng, assets=None):
+        super().__init__(W, H, fps, rng, assets)
+        self.frames = _marcos(assets, "mosquito", dibujar_mosquito, SS * 0.35 * self.escala, list(range(8)), False)
         self.ancho = self.frames[0].width
 
         # al pasar de la mitad va hacia la rana del lado contrario a por donde entró
@@ -701,17 +723,18 @@ class Ovejas(Evento):
     capa = "fondo"
     SEG = 24  # 19 / 0.8: van a un 80% de la velocidad de antes
 
-    def __init__(self, W, H, fps, rng):
-        super().__init__(W, H, fps, rng)
+    def __init__(self, W, H, fps, rng, assets=None):
+        super().__init__(W, H, fps, rng, assets)
         k = SS * 0.6 * self.escala
         esp = self.dir == -1
-        pasto = [_reducir(dibujar_oveja(k, (1 - math.cos(2 * math.pi * f / 11)) / 2), esp) for f in range(12)]
+        params = [(1 - math.cos(2 * math.pi * f / 11)) / 2 for f in range(12)]
+        pasto = _marcos(assets, "oveja", dibujar_oveja, k, params, esp)
         self.ancho = pasto[0].width
         n = rng.randint(3, 4)
         # cada oveja con su propio desplazamiento y fase de pastar, para que no vayan a la vez
         self.ovejas = [(rng.uniform(-0.09, 0.09) * W, rng.randrange(12)) for _ in range(n)]
         self.frames_oveja = pasto
-        self.perro = [_reducir(dibujar_perro(k * 1.1, p), esp) for p in range(4)]
+        self.perro = _marcos(assets, "perro", dibujar_perro, k * 1.1, list(range(4)), esp)
         self.y = (Y_CAMI - 0.01) * H  # cerca del camí, no sobre la pared de marjada
         self.duracion = int(self.SEG * fps)
 
@@ -746,14 +769,14 @@ class Xeremiers(Evento):
     capa = "fondo"
     SEG_ENTRA, SEG_TOCA, SEG_SALE = 4.0, 9.0, 4.0
 
-    def __init__(self, W, H, fps, rng):
-        super().__init__(W, H, fps, rng)
+    def __init__(self, W, H, fps, rng, assets=None):
+        super().__init__(W, H, fps, rng, assets)
         k = SS * 0.65 * self.escala
         esp = self.dir == -1
-        self.xeremier = [_reducir(dibujar_xeremier(k, p), esp) for p in range(4)]
-        self.fabioler = [_reducir(dibujar_fabioler(k, p), esp) for p in range(4)]
-        self.payes = [_reducir(dibujar_payes_baila(k, f), esp) for f in range(4)]
-        self.payesa = [_reducir(dibujar_payesa_baila(k, f), esp) for f in range(4)]
+        self.xeremier = _marcos(assets, "xeremier", dibujar_xeremier, k, list(range(4)), esp)
+        self.fabioler = _marcos(assets, "fabioler", dibujar_fabioler, k, list(range(4)), esp)
+        self.payes = _marcos(assets, "payes_baila", dibujar_payes_baila, k, list(range(4)), esp)
+        self.payesa = _marcos(assets, "payesa_baila", dibujar_payesa_baila, k, list(range(4)), esp)
 
         self.y = (Y_CAMI - 0.02) * H
         ancho_grupo = 0.22 * W
@@ -816,11 +839,11 @@ class Bronca(Evento):
     SEG_PAYESA_RETRASO = 0.8
     SEG_PAYESA_DURA = 4.0
 
-    def __init__(self, W, H, fps, rng):
-        super().__init__(W, H, fps, rng)
+    def __init__(self, W, H, fps, rng, assets=None):
+        super().__init__(W, H, fps, rng, assets)
         k = SS * 0.22 * self.escala  # pequeños: son figuras lejanas junto a una casa de dos plantas
-        self.payes = [_reducir(dibujar_payes_dret(k, d)) for d in (-2, 0, 2, 0)]
-        self.payesa = [_reducir(dibujar_payesa_ventana(k, a / 3)) for a in range(4)]
+        self.payes = _marcos(assets, "payes_dret", dibujar_payes_dret, k, [-2, 0, 2, 0], False)
+        self.payesa = _marcos(assets, "payesa_ventana", dibujar_payesa_ventana, k, [a / 3 for a in range(4)], False)
 
         base = 0.485 * H
         cx = 0.5 * W
@@ -896,7 +919,7 @@ PESOS = {"mosquito": 3}
 SOLAPABLES = {"bronca"}
 
 
-def programar_eventos(n_frames, fps, W, H, tipos, cada, semilla):
+def programar_eventos(n_frames, fps, W, H, tipos, cada, semilla, assets=None):
     """
     Devuelve una lista de (inicio, evento). Un evento cada `cada` segundos de media
     (±40 % al azar), sin repetir el mismo tipo dos veces seguidas.
@@ -911,7 +934,7 @@ def programar_eventos(n_frames, fps, W, H, tipos, cada, semilla):
         opciones = [x for x in tipos if x != anterior] or tipos
         pesos = [PESOS.get(x, 1) for x in opciones]
         tipo = rng.choices(opciones, weights=pesos)[0]
-        ev = TIPOS[tipo](W, H, fps, rng)
+        ev = TIPOS[tipo](W, H, fps, rng, assets)
         if t + ev.duracion > n_frames:
             break
         lista.append((t, ev))

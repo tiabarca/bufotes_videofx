@@ -101,13 +101,31 @@ de grito para los picos más fuertes que además hace saltar más a la rana:
 
 ### Gráficos propios
 
-Con `--assets carpeta` se usan tus PNG en lugar de los dibujados por código:
-`fondo.png`, `ranaA_boca0.png`, `ranaA_boca1.png`, `ranaA_boca2.png` y `ranaA_ojos_cerrados.png` (capa transparente solo con los párpados), y lo mismo para `ranaB_…`. Los eventos siguen funcionando encima de tu fondo.
+Las ranas se dibujan siempre por código: es lo que les da la mirada (giran
+los ojos y el sombrero hacia donde miran, se miran entre ellas o miran lo
+que pasa por la escena). Un PNG fijo las dejaría siempre mirando de frente,
+así que no son editables como imagen.
 
-Opcionalmente puedes añadir `ranaA_boca3.png` .. `ranaA_boca6.png` para los
-nuevos estados de la boca; si no existen, se reutiliza el PNG clásico más
-parecido (3 y 4 caen en boca2, 5 en boca1, 6 en boca2), así que los assets
-antiguos siguen funcionando sin tocarlos.
+Lo que sí es sustituible por PNG son el fondo y los personajes que pasan por
+la escena (tractor, cerdo, payeses, pájaros, gusano, mosquito, ovejas,
+perro, xeremiers...). Con `--assets carpeta`:
+
+- `carpeta/fondo.png` sustituye el fondo dibujado por código.
+- `carpeta/eventos/{nombre}_{N}.png` sustituye el fotograma N de ese
+  personaje (p. ej. `tractor_0.png` .. `tractor_7.png`); si falta alguno,
+  ese fotograma en concreto se sigue dibujando por código, así que no hace
+  falta aportar el juego completo. Cada PNG puede tener cualquier
+  resolución, se reescala solo. El humo del tractor no es sustituible (es
+  una mancha translúcida, no un personaje).
+
+**`exportar_sprites.py`** saca la plantilla de todos esos personajes a PNG de
+partida, listos para retocar en un editor de imagen:
+
+```
+python exportar_sprites.py --salida sprites_editables
+# edita los PNG de sprites_editables/eventos/...
+python ranas.py --a A.mp3 --b B.mp3 --assets sprites_editables ...
+```
 
 ## Ideas para una v2
 

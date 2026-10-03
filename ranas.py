@@ -153,9 +153,9 @@ def main():
 
     tipos_normales = [t for t in args.eventos if t not in SOLAPABLES]
     tipos_solapables = [t for t in args.eventos if t in SOLAPABLES]
-    agenda = programar_eventos(n, fps, W, H, tipos_normales, args.eventos_cada, semilla)
+    agenda = programar_eventos(n, fps, W, H, tipos_normales, args.eventos_cada, semilla, args.assets)
     # los solapables son un chiste puntual, no un relleno constante: mucho más espaciados
-    agenda2 = programar_eventos(n, fps, W, H, tipos_solapables, args.eventos_cada * 5, semilla + 5000)
+    agenda2 = programar_eventos(n, fps, W, H, tipos_solapables, args.eventos_cada * 5, semilla + 5000, args.assets)
 
     def _activos(agenda_):
         activo_ = [None] * n
@@ -269,16 +269,23 @@ def main():
                 else:
                     mira = 1 if r == 0 else -1  # se miran entre ellas
                 estado.append((b, not parpadeo[r][i], mira, bote, resp))
-            proc.stdin.write(componer(i, tuple(estado), activos))
+            try:
+                proc.stdin.write(componer(i, tuple(estado), activos))
+            except BrokenPipeError:
+                break  # ffmpeg ha muerto a media; el returncode/stderr de abajo dirá por qué
             if i % (fps * 60) == 0 and i:
                 v = i / (time.time() - t0)
                 print(f"  {i / fps / 60:.0f} min · {v:.0f} fps · faltan ~{(n - i) / v / 60:.1f} min")
     finally:
-        proc.stdin.close()
+        try:
+            proc.stdin.close()
+        except BrokenPipeError:
+            pass
         proc.wait()
 
     if proc.returncode != 0:
-        sys.exit("ffmpeg devolvió un error.")
+        sys.exit("ffmpeg devolvió un error (código "
+                  f"{proc.returncode}); mira el mensaje de ffmpeg más arriba.")
     print(f"Listo: {args.salida} ({time.time() - t0:.0f} s)")
 
 

@@ -6,6 +6,8 @@ __pycache__/
 # audio y vídeo de trabajo
 audio/*
 !audio/.gitkeep
+real_audio/
+pruebas/
 *.mp4
 *.wav
 *.mp3
@@ -13,3 +15,6 @@ audio/*
 
 # ffmpeg local en Windows
 ffmpeg.exe
+
+# PNG generados por exportar_sprites.py (reproducibles, no hace falta versionarlos)
+sprites_editables/

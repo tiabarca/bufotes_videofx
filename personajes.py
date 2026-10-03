@@ -15,15 +15,23 @@ GEOM_BOCA = {
 }
 
 
+OY = 120  # margen superior (unidades de diseño) para que quepa el sombrero
+
+
+def _lienzo(escala):
+    """Tamaño (ancho, alto) del lienzo de una rana a una escala dada, y su factor k."""
+    S = int(360 * escala)
+    k = S / 360
+    return S, int((360 + OY) * k), k
+
+
 def rana_generada(color, boca, ojos_abiertos, escala=1.0, mirando=1, accesorio=None):
     """
     Dibuja una rana. boca: 0-6 (ver GEOM_BOCA), ojos_abiertos: bool,
     mirando: 1 derecha / -1 izquierda, accesorio: None, "sombrero" o "gafas".
     """
-    OY = 120  # margen superior (unidades de diseño) para que quepa el sombrero
-    S = int(360 * escala)
-    k = S / 360
-    img = Image.new("RGBA", (S, int((360 + OY) * k)), (0, 0, 0, 0))
+    S, alto, k = _lienzo(escala)
+    img = Image.new("RGBA", (S, alto), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     base = tuple(color)
     oscuro = tuple(max(0, c - 45) for c in color)
@@ -114,34 +122,43 @@ ALTERNATIVA_BOCA = {3: 2, 4: 2, 5: 1, 6: 2}
 
 
 def _ruta_boca(assets, nombre, boca):
+    """Ruta del PNG de esa boca si existe (exacto o alternativa), o None si no hay ninguno."""
+    if not assets:
+        return None
     ruta = os.path.join(assets, f"rana{nombre}_boca{boca}.png")
     if os.path.exists(ruta):
         return ruta
-    return os.path.join(assets, f"rana{nombre}_boca{ALTERNATIVA_BOCA.get(boca, 2)}.png")
+    alt = os.path.join(assets, f"rana{nombre}_boca{ALTERNATIVA_BOCA.get(boca, 2)}.png")
+    return alt if os.path.exists(alt) else None
 
 
 def cargar_sprites(assets, colores, escala, accesorios=("sombrero", "gafas")):
     """
     Devuelve sprites[rana][(boca, ojos_abiertos, mirada)] -> RGBA.
 
-    Con --assets usa rana{A,B}_boca{0,1,2}.png y rana{A,B}_ojos_cerrados.png
-    (capa transparente que se superpone). Los PNG propios no cambian la mirada.
-    Opcionalmente puedes añadir boca3.png..boca6.png (ver GEOM_BOCA); si no
-    existen, se reutiliza el PNG clásico más parecido.
+    Por defecto dibuja las ranas por código (con su mirada y el gesto del
+    sombrero). Si en --assets hay rana{A,B}_boca{0,1,2}.png los usa en su
+    lugar para esa boca en concreto (con rana{A,B}_ojos_cerrados.png como
+    capa opcional para el parpadeo); si falta alguno, esa boca en concreto
+    sigue dibujándose por código, sin que haga falta aportar el juego
+    completo. Los PNG propios no cambian la mirada. Opcionalmente puedes
+    añadir boca3.png..boca6.png (ver GEOM_BOCA); si no existen, se reutiliza
+    el PNG clásico más parecido.
     """
     sprites = {}
+    tamano = _lienzo(escala)[:2]  # (ancho, alto) exactos a esta escala, sea cual sea la resolución del PNG
     for r, nombre in enumerate("AB"):
         sprites[r] = {}
         for boca in (0, 1, 2, 3, 4, 5, 6):
             for ojos in (True, False):
-                if assets:
-                    im = Image.open(_ruta_boca(assets, nombre, boca)).convert("RGBA")
+                ruta = _ruta_boca(assets, nombre, boca)
+                if ruta:
+                    im = Image.open(ruta).convert("RGBA").resize(tamano, Image.LANCZOS)
                     if not ojos:
                         pc = os.path.join(assets, f"rana{nombre}_ojos_cerrados.png")
                         if os.path.exists(pc):
-                            im = Image.alpha_composite(im, Image.open(pc).convert("RGBA").resize(im.size))
-                    if escala != 1.0:
-                        im = im.resize((int(im.width * escala), int(im.height * escala)), Image.LANCZOS)
+                            capa = Image.open(pc).convert("RGBA").resize(tamano, Image.LANCZOS)
+                            im = Image.alpha_composite(im, capa)
                     for m in MIRADAS:
                         sprites[r][(boca, ojos, m)] = im
                 else:
