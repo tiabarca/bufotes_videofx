@@ -59,7 +59,7 @@ def rana_generada(color, boca, ojos_abiertos, escala=1.0, mirando=1, accesorio=N
     # bajado a la altura de la cabeza: los ojos (dibujados después) tapan la
     # parte de abajo, así que queda por detrás de ellos, no montado encima
     if accesorio == "sombrero":
-        BAJA = 48
+        BAJA = 26
         capa = Image.new("RGBA", img.size, (0, 0, 0, 0))
         dc = ImageDraw.Draw(capa)
         negro, cinta = (35, 30, 40), (170, 45, 55)
