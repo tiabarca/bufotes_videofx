@@ -181,7 +181,7 @@ def diagnostico(nombre, db_propio, db_otro):
     voz = db_propio[db_propio > np.nanpercentile(sangr, 95) + 3] if solo_otro.sum() > 10 else db_propio
     voz_med = np.percentile(voz, 50) if len(voz) else np.nan
     recomendado = np.nanpercentile(sangr, 95) + 3
-    print(f"  Pista {nombre}: silencio ≈ {suelo:.0f} dBFS · sangrado del otro ≈ "
+    print(f"  Pista {nombre}: silencio ~{suelo:.0f} dBFS · sangrado del otro ~"
           f"{np.nanpercentile(sangr, 50):.0f} (picos {np.nanpercentile(sangr, 95):.0f}) · "
-          f"voz propia ≈ {voz_med:.0f} dBFS → --umbral sugerido ≈ {recomendado:.0f}")
+          f"voz propia ~{voz_med:.0f} dBFS -> --umbral sugerido ~{recomendado:.0f}")
     return recomendado

@@ -66,6 +66,7 @@ python ranas.py --a audio/A.mp3 --b audio/B.mp3 --mezcla audio/master.mp3 --umbr
 | `--sin-logo` | No poner el logo (`media/logo.png`) en la esquina superior izquierda. |
 | `--sin-portada` | No abrir con la portada (`media/portada.jpeg`) solapada sobre el arranque. |
 | `--portada-duracion 5` | Cuánto tarda la portada en desvanecerse hacia la escena, al principio. |
+| `--sin-recorte` | No recortar el silencio antes de la primera palabra (por defecto se recorta, para que se hable justo al acabar la portada). |
 | `--sensibilidad`, `--antisangrado` | Ajuste fino de la detección de voz. |
 | `--ancho`, `--alto`, `--fps`, `--crf` | Resolución, fotogramas por segundo y calidad del vídeo. |
 

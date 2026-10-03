@@ -56,17 +56,19 @@ def rana_generada(color, boca, ojos_abiertos, escala=1.0, mirando=1, accesorio=N
     e(50, 90, 310, 240, fill=base, outline=oscuro, width=int(4 * k))
 
     # sombrero de copa, achatado (la mitad de alto que una copa normal) y
-    # subido para que quede detrás/por encima de los ojos, no montado encima
+    # bajado a la altura de la cabeza: los ojos (dibujados después) tapan la
+    # parte de abajo, así que queda por detrás de ellos, no montado encima
     if accesorio == "sombrero":
+        BAJA = 48
         capa = Image.new("RGBA", img.size, (0, 0, 0, 0))
         dc = ImageDraw.Draw(capa)
         negro, cinta = (35, 30, 40), (170, 45, 55)
-        rect(122, -40, 238, 22, dr=dc, radius=int(10 * k), fill=negro)
-        rect(122, 4, 238, 17, dr=dc, radius=int(3 * k), fill=cinta)
-        e(80, 4, 280, 40, dr=dc, fill=negro)
-        e(128, -45, 232, -35, dr=dc, fill=(55, 50, 62))
+        rect(122, -40 + BAJA, 238, 22 + BAJA, dr=dc, radius=int(10 * k), fill=negro)
+        rect(122, 4 + BAJA, 238, 17 + BAJA, dr=dc, radius=int(3 * k), fill=cinta)
+        e(80, 4 + BAJA, 280, 40 + BAJA, dr=dc, fill=negro)
+        e(128, -45 + BAJA, 232, -35 + BAJA, dr=dc, fill=(55, 50, 62))
         capa = capa.rotate(-8 * mirando, resample=Image.BICUBIC,
-                           center=(180 * k, (22 + OY) * k))
+                           center=(180 * k, (22 + BAJA + OY) * k))
         img.alpha_composite(capa)
         d = ImageDraw.Draw(img)
 
