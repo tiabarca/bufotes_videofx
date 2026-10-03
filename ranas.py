@@ -32,6 +32,7 @@ from escena import (X_RANAS, Nubes, dibujar_canas, dibujar_microfonos, dibujar_m
                      dibujar_reflejos, fondo_mallorquin, generar_canas, generar_microfonos, generar_molino,
                      generar_nenufares, generar_reflejos)
 from eventos import SOLAPABLES, TIPOS, programar_eventos
+from overlay import cargar_logo, con_alpha, dibujar_titulo, factor_titulo
 from personajes import cargar_sprites
 
 
@@ -98,6 +99,10 @@ def main():
     ap.add_argument("--eventos-cada", type=float, default=25.0, metavar="SEG",
                     help="Segundos de media entre eventos (0 = desactivar)")
     ap.add_argument("--semilla", type=int, help="Semilla para repetir el mismo orden de eventos")
+    ap.add_argument("--titulo", help='Título de entrada (p. ej. "Bufotes Episodio 94"), con fundido al principio')
+    ap.add_argument("--titulo-duracion", type=float, default=4.0, metavar="SEG",
+                    help="Cuánto dura en pantalla el título de entrada")
+    ap.add_argument("--sin-logo", action="store_true", help="No poner el logo en la esquina")
     ap.add_argument("--crf", type=int, default=23, help="Calidad x264 (menor = mejor, más pesado)")
     ap.add_argument("--preset", default="veryfast", help="Preset x264")
     args = ap.parse_args()
@@ -150,6 +155,10 @@ def main():
     nenufares = generar_nenufares(W, H, semilla)
     micros = generar_microfonos(W, H, H * 0.875, escala)
     molino = generar_molino(W, H)
+    logo = None if args.sin_logo else cargar_logo(H)
+    margen_logo = int(0.03 * H)
+    titulo = dibujar_titulo(args.titulo, W, escala) if args.titulo else None
+    y_titulo = int(0.1 * H)
 
     tipos_normales = [t for t in args.eventos if t not in SOLAPABLES]
     tipos_solapables = [t for t in args.eventos if t in SOLAPABLES]
@@ -216,6 +225,13 @@ def main():
             if ev.capa == "frente":
                 for im, x, y in ev.sprites(t_ev):
                     img.paste(im, (x, y), im)
+        if logo is not None:
+            img.paste(logo, (margen_logo, margen_logo), logo)
+        if titulo is not None:
+            fa = factor_titulo(t_seg, args.titulo_duracion)
+            if fa > 0.003:
+                capa = con_alpha(titulo, fa)
+                img.paste(capa, (0, y_titulo), capa)
         return img.tobytes()
 
     # --- ffmpeg: fotogramas crudos por stdin + audio
