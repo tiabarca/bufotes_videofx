@@ -108,7 +108,8 @@ def main():
     ap.add_argument("--portada-duracion", type=float, default=5.0, metavar="SEG",
                     help="Cuánto tarda la portada en desvanecerse sobre la escena, al principio")
     ap.add_argument("--sin-recorte", action="store_true",
-                    help="No recortar el silencio inicial antes de la primera palabra")
+                    help="No recortar el silencio inicial antes de la primera palabra "
+                         "(con --mezcla nunca se recorta, por si lleva música de entrada)")
     ap.add_argument("--crf", type=int, default=23, help="Calidad x264 (menor = mejor, más pesado)")
     ap.add_argument("--preset", default="veryfast", help="Preset x264")
     args = ap.parse_args()
@@ -143,9 +144,12 @@ def main():
             estados_boca(db, da, zb, cb, args.sensibilidad, args.antisangrado, umb[1])]
 
     # recorta el silencio inicial (antes de que nadie hable) para que la
-    # conversación arranque justo al acabar la portada, no después de un hueco
+    # conversación arranque justo al acabar la portada, no después de un hueco.
+    # Solo si no hay --mezcla: esa pista puede llevar música de entrada que no
+    # sale en los micros sueltos de A/B, y no hay forma de distinguirla desde
+    # aquí del silencio real, así que un máster ya montado se deja intacto.
     recorte_seg = 0.0
-    if not args.sin_recorte:
+    if not args.sin_recorte and not args.mezcla:
         hablando = (boca[0] > 0) | (boca[1] > 0)
         primero = int(np.argmax(hablando)) if hablando.any() else 0
         recorte = max(0, primero - int(0.3 * fps))
