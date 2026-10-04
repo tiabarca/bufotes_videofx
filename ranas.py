@@ -203,6 +203,8 @@ def main():
         if usados:
             notas = sorted(usados.items(), key=lambda kv: kv[0])
             print(f"  MIDI: {len(agenda_midi)} eventos -> " + ", ".join(f"{k}:{v}" for k, v in notas))
+            for ini, ev in sorted(agenda_midi, key=lambda x: x[0]):
+                print(f"    {ini / fps:6.1f}s  {type(ev).__name__.lower()}")
     agenda.sort(key=lambda x: x[0])  # para que "el más reciente" tenga sentido al mirar varios a la vez
 
     # eventos activos en cada fotograma: pueden coincidir varios (agenda normal,
