@@ -9,8 +9,9 @@ Eventos extra (salen al azar y también se pueden lanzar desde MIDI):
     asnos         dos burros asoman por los lados y se ríen
     motocultor    un pagès con motocultor por el camí, echando muchísimo humo
     bombilla      una bombilla baja del techo, se enciende y vuelve a subir
+    cabra         un payès toca el tamborí (redoble); una cabra entra, le da una coz y se esconde
 
-Los que "asoman" (cerdo_asoma, rana_guapa, muchedumbre, asnos, bombilla) se
+Los que "asoman" (cerdo_asoma, rana_guapa, muchedumbre, asnos, bombilla, cabra) se
 quedan mientras dure la nota MIDI. La velocidad de la nota cambia el tamaño o la
 intensidad.
 
@@ -806,6 +807,141 @@ class Bombilla(Asoma):
         return self.cx
 
 
+# ============================================================================
+# Cabra: redoble de tambor y una coz
+# ============================================================================
+
+def dibujar_payes_tambor(k, fase):
+    """Payès de pie tocando un tamborí a toda prisa (redoble). fase par/impar alterna las baquetas."""
+    w, h = int(100 * k), int(130 * k)
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    piel, camisa, pantalon, oscuro = (228, 182, 150), (150, 70, 60), (90, 80, 70), (40, 36, 40)
+    madera, parche = (120, 85, 55), (225, 215, 195)
+
+    def E(x0, y0, x1, y1, **kw):
+        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
+
+    def R(x0, y0, x1, y1, **kw):
+        d.rectangle([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
+
+    R(34, 78, 46, 118, fill=pantalon)  # piernas firmes, plantado
+    R(54, 78, 66, 118, fill=pantalon)
+    R(22, 42, 78, 82, fill=camisa)
+    E(26, 10, 60, 44, fill=piel)
+    d.chord([22 * k, 2 * k, 64 * k, 26 * k], 180, 360, fill=(90, 80, 70))  # gorra
+
+    E(56, 56, 90, 82, fill=parche, outline=oscuro, width=max(1, int(2 * k)))  # tamborí a la cintura
+    arriba = fase % 2 == 0  # las baquetas alternan muy rápido: el redoble
+    by1, by2 = (40, 58) if arriba else (58, 40)
+    d.line([(78 * k, 46 * k), (84 * k, by1 * k)], fill=madera, width=max(1, int(2.5 * k)))
+    d.line([(66 * k, 46 * k), (60 * k, by2 * k)], fill=madera, width=max(1, int(2.5 * k)))
+    d.line([(22 * k, 50 * k), (14 * k, 60 * k)], fill=piel, width=max(1, int(5 * k)))  # brazo que sujeta
+    return img
+
+
+def dibujar_cabra(k, coz=False):
+    """
+    Cabra de perfil, mirando a la derecha. Las patas traseras están junto a
+    la cola (izquierda); coz=True las estira hacia atrás y arriba, en pleno
+    golpe, por delante del cuerpo.
+    """
+    w, h = int(110 * k), int(90 * k)
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    pelo, osc, cuerno = (225, 220, 205), (195, 188, 170), (235, 228, 210)
+
+    def E(x0, y0, x1, y1, **kw):
+        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
+
+    def L(pts, ancho, c):
+        d.line([(x * k, (y + 20) * k) for x, y in pts], fill=c, width=max(1, int(ancho * k)), joint="curve")
+
+    L([(66, 48), (64, 74)], 7, osc)  # patas delanteras (junto a la cabeza), siempre apoyadas
+    L([(74, 50), (76, 74)], 7, osc)
+    if not coz:
+        L([(30, 48), (28, 74)], 7, osc)  # traseras (junto a la cola) apoyadas
+        L([(42, 50), (40, 74)], 7, osc)
+    E(14, 40, 90, 80, fill=pelo, outline=osc, width=max(1, int(2 * k)))  # cuerpo
+    E(82, 28, 110, 62, fill=pelo, outline=osc, width=max(1, int(2 * k)))  # cabeza
+    d.line([(90 * k, 30 * k), (100 * k, 14 * k)], fill=cuerno, width=max(1, int(3 * k)))
+    d.line([(98 * k, 30 * k), (108 * k, 16 * k)], fill=cuerno, width=max(1, int(3 * k)))
+    E(100, 40, 108, 46, fill=(45, 40, 38))  # ojo
+    d.polygon([(16 * k, 52 * k), (2 * k, 46 * k), (4 * k, 60 * k)], fill=pelo, outline=osc)  # cola
+    if coz:  # traseras estiradas hacia atrás y arriba, por delante del cuerpo
+        L([(30, 46), (2, 24)], 7, osc)
+        L([(40, 50), (8, 32)], 7, osc)
+    return img
+
+
+class Cabra(Asoma):
+    """
+    Un payès se queda junto a la orilla tocando el tamborí sin parar (el
+    redoble); a media nota, una cabra entra corriendo desde un lado, le da
+    una coz y se esconde otra vez por donde ha venido.
+    """
+    SUBIR, BAJAR, MIN_ARRIBA, POR_DEFECTO = 0.4, 0.4, 1.8, 2.5
+
+    def dibujar(self):
+        k = SS * (0.6 + 0.25 * self.velocidad / 127) * self.escala
+        self.payes = [_reducir(dibujar_payes_tambor(k, f)) for f in range(2)]
+        kc = k * 0.8
+        # False/True de espejado puro (sin dir): mira a la derecha / a la izquierda
+        self.cabra = {}
+        for coz in (False, True):
+            im = _reducir(dibujar_cabra(kc, coz))
+            self.cabra[(coz, False)] = im
+            self.cabra[(coz, True)] = im.transpose(Image.FLIP_LEFT_RIGHT)
+        self.ancho_payes, self.alto = self.payes[0].size
+        self.ancho_cabra = self.cabra[(False, False)].width
+        self.cx = self.rng.choice((0.32, 0.68)) * self.W
+        self.lado = self.rng.choice((1, -1))  # 1: entra por la izquierda
+        # al entrar mira hacia el payès (hacia la derecha si viene de la izquierda);
+        # para que la coz conecte de verdad tiene que golpear de espaldas, así que
+        # justo al cocear (y al volver) se da la vuelta y queda mirando para el otro lado
+        self.mira_al_entrar = self.lado == -1
+        n = self.n_arriba
+        self.dur_dash = max(6, int(0.5 * self.fps))
+        self.dur_coz = max(5, int(0.35 * self.fps))
+        self.t_entra_cabra = max(0, int(n * 0.3))
+        self.t_coz = self.t_entra_cabra + self.dur_dash
+        self.t_vuelve = self.t_coz + self.dur_coz
+        self.t_sale_cabra = self.t_vuelve + self.dur_dash
+        self.x_lejos = -self.ancho_cabra if self.lado == 1 else self.W + self.ancho_cabra
+        self.x_contacto = self.cx - self.lado * (self.ancho_payes * 0.5 + self.ancho_cabra * 0.25)
+
+    def _cabra_estado(self, ta):
+        """(x, en_pleno_golpe, mirar_espejado) de la cabra durante su visita, o None si no está en pantalla."""
+        if ta < self.t_entra_cabra or ta >= self.t_sale_cabra:
+            return None
+        if ta < self.t_coz:
+            p = (ta - self.t_entra_cabra) / self.dur_dash
+            x = self.x_lejos + p * (self.x_contacto - self.x_lejos)
+            return x, False, self.mira_al_entrar
+        if ta < self.t_vuelve:
+            return self.x_contacto, True, not self.mira_al_entrar
+        p = (ta - self.t_vuelve) / self.dur_dash
+        x = self.x_contacto + p * (self.x_lejos - self.x_contacto)
+        return x, False, not self.mira_al_entrar
+
+    def sprites(self, t):
+        f = self.fuera(t)
+        ta = self.t_arriba(t)
+        im = self.payes[(t // 2) % 2]
+        y = int(self.H - self.alto * f)
+        estado = self._cabra_estado(ta) if ta >= 0 else None
+        bote = int(6 * self.escala) if estado is not None and self.t_coz <= ta < self.t_vuelve else 0
+        out = [(im, int(self.cx - self.ancho_payes / 2), y - bote)]
+        if estado is not None:
+            x, coz, espejo = estado
+            cim = self.cabra[(coz, espejo)]
+            out.append((cim, int(x - cim.width / 2), int(y + self.alto - cim.height)))
+        return out
+
+    def x_interes(self, t):
+        return self.cx
+
+
 TIPOS.update({
     "cerdo_asoma": CerdoAsoma,
     "grillo": Grillo,
@@ -815,4 +951,5 @@ TIPOS.update({
     "asnos": Asnos,
     "motocultor": Motocultor,
     "bombilla": Bombilla,
+    "cabra": Cabra,
 })

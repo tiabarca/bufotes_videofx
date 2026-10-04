@@ -142,7 +142,7 @@ pedo        = nada        # el pedo no se lanza desde MIDI (pero sigue saliendo 
 ### Más opciones
 
 - La **fuerza de la nota** (velocity) cambia el tamaño o la intensidad del evento: un cerdo más grande, un grillo que salta más alto…
-- Los eventos que **asoman** (cerdo_asoma, rana_guapa, muchedumbre, asnos, bombilla) se quedan en pantalla mientras dure la nota.
+- Los eventos que **asoman** (cerdo_asoma, rana_guapa, muchedumbre, asnos, bombilla, cabra) se quedan en pantalla mientras dure la nota.
 - Los que **cruzan la pantalla** (tractor, cerdo, pájaros, ovejas, motocultor, grillo) entran, se quedan quietos mientras dure la nota y salen girando por donde han venido; la duración del evento sale de la nota, no de su tiempo de cruce habitual al azar.
 - Pueden coincidir varios eventos a la vez (de la agenda aleatoria y del MIDI); las ranas miran al que haya empezado más recientemente.
 - El MIDI se suma a los eventos aleatorios. Si en un episodio quieres solo los del MIDI, añade `--eventos-cada 0`.
@@ -168,6 +168,7 @@ pedo        = nada        # el pedo no se lanza desde MIDI (pero sigue saliendo 
 | `muchedumbre` | público aplaudiendo | borde inferior |
 | `asnos` | dos burros asoman por los lados y se ríen ("IA-IA!") | laterales |
 | `bombilla` | baja colgada de un cable, chisporrotea, se enciende y sube | arriba |
+| `cabra` | un payès toca el tamborí sin parar (redoble); a media nota entra una cabra corriendo, se da la vuelta, le da una coz y se esconde otra vez por donde ha venido | junto a la orilla |
 | `pedo` | una de las dos ranas (al azar) se tira un pedo: le sale un chorro de humo verdoso por detrás que se expande y se disipa, con "PRRRT!" y líneas de peste. La rana da un bote y cierra los ojos, y la ráfaga dobla las cañas de su lado del estanque, que vuelven oscilando | junto a la rana |
 
 ### La boca
