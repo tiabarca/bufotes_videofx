@@ -58,6 +58,10 @@ python ranas.py --a audio/A.mp3 --b audio/B.mp3 --mezcla audio/master.mp3 --umbr
 | `--duracion 60` | Renderiza solo los primeros N segundos. |
 | `--eventos tractor gusano` | Qué puede pasar por la escena. Por defecto, todos. Con `--eventos` sin valores, ninguno. |
 | `--eventos-cada 25` | Segundos de media entre eventos (±40 % al azar). |
+| `--midi gags.mid` | Pista MIDI: cada nota lanza un evento en su instante exacto, además de los aleatorios (ver [Eventos desde una pista MIDI](#eventos-desde-una-pista-midi)). |
+| `--midi-mapa otro.ini` | Mapa nota → evento. Por defecto, `midi_mapa.ini` junto a `ranas.py`. |
+| `--midi-desfase -0.5` | Segundos a sumar a las notas MIDI (negativo = antes). |
+| `--midi-canal 10` | Usar solo las notas de ese canal MIDI. |
 | `--semilla 42` | Repite exactamente el mismo orden de eventos. |
 | `--accesorios sombrero gafas` | Accesorio de cada rana: `sombrero`, `gafas` o `nada`. |
 | `--tamano-ranas 0.8` | Tamaño de las ranas. |
@@ -74,12 +78,14 @@ Las tres pistas tienen que empezar en el mismo instante. Si el máster lleva una
 ## Estructura
 
 ```
-ranas.py       línea de comandos y render (envía los fotogramas a ffmpeg)
-audio.py       niveles por fotograma, umbrales, anti-sangrado entre micros
-escena.py      fondo: montañas, marjades con olivos, possessió, estanque
-personajes.py  las dos ranas (bocas, parpadeo, mirada, sombrero, gafas)
-eventos.py     tractor, cerdo, pájaros, gusano, ovejas y la programación aleatoria
-overlay.py     logo, portada de entrada y título (media/logo.png, media/portada.jpeg, media/fuentes/)
+ranas.py        línea de comandos y render (envía los fotogramas a ffmpeg)
+audio.py        niveles por fotograma, umbrales, anti-sangrado entre micros
+escena.py       fondo: montañas, marjades con olivos, possessió, estanque
+personajes.py   las dos ranas (bocas, parpadeo, mirada, sombrero, gafas)
+eventos.py      tractor, cerdo, pájaros, gusano, ovejas, xeremiers, bronca y la programación aleatoria
+eventos_extra.py  ocho eventos más (se registran solos al importar el módulo)
+midi.py         lector de archivos .mid y del mapa nota → evento (midi_mapa.ini)
+overlay.py      logo, portada de entrada y título (media/logo.png, media/portada.jpeg, media/fuentes/)
 ```
 
 ### Logo, portada y título de entrada
@@ -97,13 +103,71 @@ encoge sola hasta que quepa.
 
 ### Añadir un evento nuevo
 
-En `eventos.py`, crea una clase que herede de `Evento` con:
+En `eventos.py` (o en `eventos_extra.py`, ver abajo), crea una clase que herede de `Evento` con:
 - `capa`: `"fondo"` (detrás de las ranas) o `"frente"` (delante)
 - `duracion`: en fotogramas
 - `sprites(t)`: devuelve una lista de `(imagen, x, y)` para el fotograma `t`
 - `x_interes(t)`: hacia dónde miran las ranas
 
 Después regístrala en el diccionario `TIPOS`. Aparecerá automáticamente en `--eventos`.
+
+Opcionalmente, un evento puede definir también:
+- `afecta_rana(t)` → `{indice_rana: {"bote": n, "ojos": bool}}`: para que ese fotograma le imponga a una rana en concreto un bote mínimo y/o los ojos cerrados (independientemente de su parpadeo normal).
+- `viento(t)` → `{"izq"|"der": empuje en px}`: para doblar puntualmente las cañas del estanque de ese lado (ver `Pedo` en `eventos_extra.py`).
+
+## Eventos desde una pista MIDI
+
+Los eventos aleatorios siguen saliendo como siempre, y además puedes decidir tú cuándo pasa algo concreto. En el DAW, añade una pista MIDI encima del podcast, pon una nota donde quieras un gag y expórtala como `.mid` desde el inicio de la sesión:
+
+```
+python ranas.py --a audio/A.mp3 --b audio/B.mp3 --mezcla audio/master.mp3 --midi audio/gags.mid -o episodio.mp4
+```
+
+### Qué nota lanza cada evento: `midi_mapa.ini`
+
+Está en la carpeta del proyecto y se carga solo. Cada línea es un evento con las notas que lo lanzan, separadas por comas:
+
+```ini
+cerdo_asoma = Do, 61      # cualquier Do, y también la nota 61
+motocultor  = Sol2        # solo el Sol de la octava 2
+tractor     = Sol         # el resto de Soles
+pedo        = nada        # el pedo no se lanza desde MIDI (pero sigue saliendo al azar)
+```
+
+- Valen nombres latinos o ingleses (Do/C, Re#/D#, Sib/Bb), con o sin octava (C3 = nota 60), y números de nota MIDI.
+- Si una tecla encaja en varias líneas, gana la más concreta: número > nota con octava > nota sin octava.
+- Las notas que no aparecen en ninguna línea no hacen nada.
+- Para usar otro mapa en un episodio concreto, añade `--midi-mapa otro.ini`.
+
+### Más opciones
+
+- La **fuerza de la nota** (velocity) cambia el tamaño o la intensidad del evento: un cerdo más grande, un grillo que salta más alto…
+- Los eventos que **asoman** (cerdo_asoma, rana_guapa, muchedumbre, asnos, bombilla) se quedan en pantalla mientras dure la nota.
+- Pueden coincidir varios eventos a la vez (de la agenda aleatoria y del MIDI); las ranas miran al que haya empezado más recientemente.
+- El MIDI se suma a los eventos aleatorios. Si en un episodio quieres solo los del MIDI, añade `--eventos-cada 0`.
+- `--midi-desfase -0.5` adelanta todas las notas medio segundo, por si el MIDI no empieza a la vez que el audio.
+- `--midi-canal 10` usa solo las notas de ese canal.
+
+### Lista de eventos
+
+| Evento | Qué pasa | Dónde |
+|---|---|---|
+| `tractor` | tractor rojo con pagès, ruedas girando y humo | camí del fondo |
+| `motocultor` | pagès con motocultor, lento y echando muchísimo humo negro | camí del fondo |
+| `cerdo` | el porc negre pasea con una muchedumbre de payeses detrás, cuchillo y olla en alto | camí del fondo |
+| `pajaros` | dos pájaros aleteando | cielo |
+| `gusano` | se arrastra ondulando hacia la rana más cercana; se lo come de un lengüetazo | delante |
+| `mosquito` | vuela errático por delante; la rana hacia la que va se lo come de un lengüetazo | delante |
+| `ovejas` | rebaño pasturando con un perro pastor que lo persigue | camí del fondo |
+| `xeremiers` | xeremier y flabiolaire tocando, con una pareja de ball de bot | camí del fondo |
+| `bronca` | al pagès le gritan desde casa: sale por la puerta y su mujer le riñe desde la ventana con un palo. Solapable: puede coincidir con cualquier otro evento | junto a la possessió |
+| `grillo` | cruza a saltos | delante |
+| `cerdo_asoma` | el cerdo saca la cabeza por abajo, husmea y parpadea | borde inferior |
+| `rana_guapa` | rana con pintalabios, pestañas y lazo; sube del estanque, guiña un ojo y lanza un beso con corazones | estanque, entre las ranas |
+| `muchedumbre` | público aplaudiendo | borde inferior |
+| `asnos` | dos burros asoman por los lados y se ríen ("IA-IA!") | laterales |
+| `bombilla` | baja colgada de un cable, chisporrotea, se enciende y sube | arriba |
+| `pedo` | una de las dos ranas (al azar) se tira un pedo: le sale un chorro de humo verdoso por detrás que se expande y se disipa, con "PRRRT!" y líneas de peste. La rana da un bote y cierra los ojos, y la ráfaga dobla las cañas de su lado del estanque, que vuelven oscilando | junto a la rana |
 
 ### La boca
 

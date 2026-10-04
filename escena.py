@@ -400,16 +400,22 @@ def generar_canas(W, H, semilla):
         cabeza = rng.random() < 0.45
         fase = rng.uniform(0, 2 * math.pi)
         periodo = rng.uniform(2.6, 4.2)
-        canas.append((xb, top, dx, cabeza, fase, periodo))
+        lado = "izq" if xb < W / 2 else "der"  # para una ráfaga puntual de un solo lado (p. ej. el pedo)
+        canas.append((xb, top, dx, cabeza, fase, periodo, lado))
     return canas
 
 
-def dibujar_canas(d, canas, t_seg, H):
-    """Balanceo sutil y continuo de las cañas, como si las moviera el viento."""
+def dibujar_canas(d, canas, t_seg, H, viento=None):
+    """
+    Balanceo sutil y continuo de las cañas, como si las moviera el viento.
+    `viento`: {"izq"|"der": empuje extra en px}, para una ráfaga puntual que se
+    suma al balanceo ambiental de las cañas de ese lado (p. ej. el pedo).
+    """
     amp = 0.012 * H
-    for xb, top, dx, cabeza, fase, periodo in canas:
-        viento = amp * math.sin(2 * math.pi * t_seg / periodo + fase)
-        tx, ty = xb + dx + viento, top
+    viento = viento or {}
+    for xb, top, dx, cabeza, fase, periodo, lado in canas:
+        ambiental = amp * math.sin(2 * math.pi * t_seg / periodo + fase)
+        tx, ty = xb + dx + ambiental + viento.get(lado, 0.0), top
         d.line([(xb, 0.8 * H), (tx, ty)], fill=(78, 112, 52), width=3)
         if cabeza:
             d.ellipse([tx - 5, ty, tx + 5, ty + 0.05 * H], fill=(112, 76, 46))

@@ -48,6 +48,17 @@
                "--umbral", "${input:umbral}", "-o", "${input:salida}"]
     },
     {
+      "name": "Episodio con MIDI",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/ranas.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "args": ["--a", "audio/A.mp3", "--b", "audio/B.mp3", "--mezcla", "audio/master.mp3",
+               "--umbral", "${input:umbral}", "--midi", "audio/gags.mid",
+               "-o", "${input:salida}"]
+    },
+    {
       "name": "Vista previa del fondo",
       "type": "debugpy",
       "request": "launch",

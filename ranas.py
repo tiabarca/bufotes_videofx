@@ -26,14 +26,23 @@ from collections import OrderedDict
 import numpy as np
 from PIL import Image, ImageDraw
 
-from audio import (FFMPEG, cargar_audio, centroide_por_fotograma, diagnostico, estados_boca,
+from audio import (FFMPEG, SR, cargar_audio, centroide_por_fotograma, diagnostico, estados_boca,
                     nivel_por_fotograma, tasa_cruces_por_fotograma)
 from escena import (X_RANAS, Nubes, dibujar_canas, dibujar_microfonos, dibujar_molino, dibujar_nenufares,
                      dibujar_reflejos, fondo_mallorquin, generar_canas, generar_microfonos, generar_molino,
                      generar_nenufares, generar_reflejos)
 from eventos import SOLAPABLES, TIPOS, programar_eventos
+import eventos_extra  # noqa: F401  (registra los eventos nuevos en TIPOS)
+from midi import cargar_mapa, eventos_midi
 from overlay import cargar_logo, cargar_portada, con_alpha, dibujar_titulo, factor_portada, factor_titulo
 from personajes import cargar_sprites
+
+# la consola de Windows usa cp1252 y revienta con caracteres como → o ≈
+for _flujo in (sys.stdout, sys.stderr):
+    try:
+        _flujo.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
 
 
 class LRU(OrderedDict):
@@ -98,6 +107,13 @@ def main():
                     help="Qué puede pasar por la escena (por defecto todos). Sin valores: ninguno")
     ap.add_argument("--eventos-cada", type=float, default=25.0, metavar="SEG",
                     help="Segundos de media entre eventos (0 = desactivar)")
+    ap.add_argument("--midi", help="Pista MIDI (.mid): cada nota lanza un evento en su instante exacto, "
+                                   "además de los aleatorios")
+    ap.add_argument("--midi-mapa", metavar="INI", help="Mapa nota -> evento (por defecto, midi_mapa.ini)")
+    ap.add_argument("--midi-desfase", type=float, default=0.0, metavar="SEG",
+                    help="Segundos a sumar a las notas MIDI (negativo = antes)")
+    ap.add_argument("--midi-canal", type=int, choices=range(1, 17), metavar="1-16",
+                    help="Usar solo las notas de este canal MIDI")
     ap.add_argument("--semilla", type=int, help="Semilla para repetir el mismo orden de eventos")
     ap.add_argument("--titulo", help='Título de entrada (p. ej. "Bufotes Episodio 94"), aparece tras la portada')
     ap.add_argument("--titulo-duracion", type=float, default=10.0, metavar="SEG",
@@ -127,6 +143,13 @@ def main():
     ab = np.pad(ab, (0, n_muestras - len(ab)))
     da, db = nivel_por_fotograma(aa, fps), nivel_por_fotograma(ab, fps)
     n = min(len(da), len(db))
+    if args.mezcla:
+        # el vídeo dura lo que dure el audio final, no lo que duren las pistas de referencia
+        n_mezcla = int(len(cargar_audio(args.mezcla, args.duracion)) / SR * fps)
+        if n_mezcla < n:
+            print(f"  Las pistas A/B duran {n / fps / 60:.1f} min y la mezcla {n_mezcla / fps / 60:.1f} min: "
+                  f"se usa la duración de la mezcla")
+            n = n_mezcla
     da, db = da[:n], db[:n]
 
     if args.analizar:
@@ -172,19 +195,26 @@ def main():
     agenda = programar_eventos(n, fps, W, H, tipos_normales, args.eventos_cada, semilla, args.assets)
     # los solapables son un chiste puntual, no un relleno constante: mucho más espaciados
     agenda2 = programar_eventos(n, fps, W, H, tipos_solapables, args.eventos_cada * 5, semilla + 5000, args.assets)
+    agenda = agenda + agenda2
+    if args.midi:
+        agenda_midi, usados = eventos_midi(args.midi, fps, W, H, TIPOS, cargar_mapa(args.midi_mapa),
+                                           args.midi_desfase, args.midi_canal, n, semilla)
+        agenda = agenda + agenda_midi
+        if usados:
+            notas = sorted(usados.items(), key=lambda kv: kv[0])
+            print(f"  MIDI: {len(agenda_midi)} eventos -> " + ", ".join(f"{k}:{v}" for k, v in notas))
+    agenda.sort(key=lambda x: x[0])  # para que "el más reciente" tenga sentido al mirar varios a la vez
 
-    def _activos(agenda_):
-        activo_ = [None] * n
-        for idx, (ini, ev) in enumerate(agenda_):
-            for i in range(ini, min(n, ini + ev.duracion)):
-                activo_[i] = idx
-        return activo_
+    # eventos activos en cada fotograma: pueden coincidir varios (agenda normal,
+    # el solapable y los del MIDI), así que cada fotograma guarda una lista de índices
+    activo_en = [[] for _ in range(n)]
+    for idx, (ini, ev) in enumerate(agenda):
+        for i in range(ini, min(n, ini + ev.duracion)):
+            activo_en[i].append(idx)
 
-    activo = _activos(agenda)
-    activo2 = _activos(agenda2)
-    if agenda or agenda2:
+    if agenda:
         resumen = {}
-        for _, ev in agenda + agenda2:
+        for _, ev in agenda:
             nombre = type(ev).__name__.lower()
             resumen[nombre] = resumen.get(nombre, 0) + 1
         print(f"  Eventos: {', '.join(f'{v} {k}' for k, v in resumen.items())} (semilla {semilla})")
@@ -218,7 +248,13 @@ def main():
             img.paste(spr, (x, y), spr)
         t_seg = i / fps
         dibujar_molino(draw, molino, t_seg)
-        dibujar_canas(draw, canas, t_seg, H)
+        viento = {}
+        for ev, t_ev in activos:
+            viento_fn = getattr(ev, "viento", None)
+            if viento_fn is not None:
+                for lado, px in viento_fn(t_ev).items():
+                    viento[lado] = viento.get(lado, 0.0) + px
+        dibujar_canas(draw, canas, t_seg, H, viento)
         dibujar_reflejos(draw, reflejos, t_seg, W)
         dibujar_nenufares(img, nenufares)
 
@@ -262,27 +298,32 @@ def main():
            + [args.salida])
 
     print("Renderizando…")
-    proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
+    log_ffmpeg = os.path.splitext(args.salida)[0] + "_ffmpeg.log"
+    flog = open(log_ffmpeg, "w", encoding="utf-8", errors="replace")
+    proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=flog)
     periodo_resp = [3.6 * fps, 4.1 * fps]
     margen_mirada = 0.06 * W
     try:
         for i in range(n):
-            activos = []
-            for agenda_, activo_ in ((agenda, activo), (agenda2, activo2)):
-                idx = activo_[i]
-                if idx is not None:
-                    ini, ev = agenda_[idx]
-                    activos.append((ev, i - ini))
+            activos = [(agenda[k][1], i - agenda[k][0]) for k in activo_en[i]]
 
             x_ev = None
             boca_forzada = None
-            for ev, t_ev in activos:  # la agenda principal manda sobre la solapable si ambas opinan
+            for ev, t_ev in reversed(activos):  # el que ha empezado más recientemente manda
                 if x_ev is None:
                     x_ev = ev.x_interes(t_ev)
                 if boca_forzada is None:
                     forzar = getattr(ev, "boca_forzada", None)
                     if forzar is not None:
                         boca_forzada = forzar(t_ev)
+
+            # eventos que afectan a una rana en concreto (p. ej. el pedo: bote y ojos cerrados)
+            efectos = {}
+            for ev, t_ev in activos:
+                afecta = getattr(ev, "afecta_rana", None)
+                if afecta is not None:
+                    for rr, ef in afecta(t_ev).items():
+                        efectos.setdefault(rr, []).append(ef)
 
             estado = []
             for r in (0, 1):
@@ -296,24 +337,33 @@ def main():
                     mira = 0 if abs(dx) < margen_mirada else (1 if dx > 0 else -1)
                 else:
                     mira = 1 if r == 0 else -1  # se miran entre ellas
-                estado.append((b, not parpadeo[r][i], mira, bote, resp))
+                ojos = not parpadeo[r][i]
+                for ef in efectos.get(r, ()):
+                    bote = max(bote, ef.get("bote", 0))
+                    ojos = ojos and ef.get("ojos", True)
+                estado.append((b, ojos, mira, bote, resp))
             try:
                 proc.stdin.write(componer(i, tuple(estado), activos))
-            except BrokenPipeError:
-                break  # ffmpeg ha muerto a media; el returncode/stderr de abajo dirá por qué
+            except (BrokenPipeError, OSError):
+                print(f"\nffmpeg se ha cerrado en el fotograma {i} ({i / fps / 60:.1f} min de vídeo).")
+                break
             if i % (fps * 60) == 0 and i:
                 v = i / (time.time() - t0)
                 print(f"  {i / fps / 60:.0f} min · {v:.0f} fps · faltan ~{(n - i) / v / 60:.1f} min")
     finally:
         try:
             proc.stdin.close()
-        except BrokenPipeError:
+        except OSError:
             pass
         proc.wait()
+        flog.close()
 
     if proc.returncode != 0:
-        sys.exit("ffmpeg devolvió un error (código "
-                  f"{proc.returncode}); mira el mensaje de ffmpeg más arriba.")
+        with open(log_ffmpeg, encoding="utf-8", errors="replace") as f:
+            ultimas = f.read().strip().splitlines()[-15:]
+        print("Últimas líneas de ffmpeg:\n  " + "\n  ".join(ultimas or ["(ffmpeg no dijo nada)"]))
+        sys.exit(f"ffmpeg ha fallado (código {proc.returncode}). Log completo: {log_ffmpeg}")
+    os.remove(log_ffmpeg)
     print(f"Listo: {args.salida} ({time.time() - t0:.0f} s)")
 
 
