@@ -106,6 +106,7 @@ class CerdoAsoma(Evento):
     Lanzado desde MIDI, se queda arriba mientras dure la nota."""
     capa = "frente"
     SUBIR, BAJAR, MIN_ARRIBA = 0.35, 0.3, 0.8
+    AJUSTA_CENIT = True  # por MIDI, la nota marca cuando husmea arriba, no cuando empieza a subir
 
     def __init__(self, W, H, fps, rng, assets=None):
         super().__init__(W, H, fps, rng, assets)
@@ -881,6 +882,7 @@ class Cabra(Asoma):
     una coz y se esconde otra vez por donde ha venido.
     """
     SUBIR, BAJAR, MIN_ARRIBA, POR_DEFECTO = 0.4, 0.4, 1.8, 2.5
+    AJUSTA_CENIT = True  # por MIDI, la nota marca la coz, no cuando empieza a subir el payès
 
     def dibujar(self):
         k = SS * (1.1 + 0.4 * self.velocidad / 127) * self.escala

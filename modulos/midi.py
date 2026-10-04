@@ -292,13 +292,18 @@ def eventos_midi(ruta, fps, W, H, tipos, mapa=None, desfase=0.0, canal=None,
         if tipo not in tipos:
             desconocidos.add(tipo)
             continue
-        ini = int(round((nota.inicio + desfase) * fps))
+        clase = tipos[tipo]
+        # algunos eventos "asoman" y no están en su momento fuerte (el "zenit") nada
+        # más arrancar, sino a mitad de subir; para esos, la nota marca el zenit, no
+        # el arranque, así que el evento se adelanta la mitad de lo que tarda en subir
+        retroceso = clase.SUBIR / 2 if getattr(clase, "AJUSTA_CENIT", False) else 0.0
+        ini = int(round((nota.inicio + desfase - retroceso) * fps))
         if ini < 0 or (n_frames is not None and ini >= n_frames):
             continue
         fin_activos = [f for f in fin_activos if f > ini]
         if len(fin_activos) >= max_simultaneos:
             continue  # demasiados a la vez: se salta para no frenar el render
-        ev = tipos[tipo](W, H, fps, rng)
+        ev = clase(W, H, fps, rng)
         ev.velocidad = nota.velocidad
         ev.mantener = max(1, int(round((nota.fin - nota.inicio) * fps)))
         if hasattr(ev, "ajustar_a_nota"):
