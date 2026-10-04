@@ -818,7 +818,7 @@ class Xeremiers(Evento):
     """
     Una colla de xeremiers: dos músicos (xeremier y flabiolaire) y una
     parella de ball de bot. Entran por un lado, se acercan solo hasta un
-    25% del ancho de pantalla, se quedan un rato tocando y bailando, y
+    50% del ancho de pantalla, se quedan un rato tocando y bailando, y
     vuelven por donde han venido. Músicos y bailadors van cada uno en su
     propio grupo apretado, con un hueco claro entre los dos grupos.
     """
@@ -836,7 +836,7 @@ class Xeremiers(Evento):
 
         self.y = (Y_CAMI - 0.02) * H
         ancho_grupo = 0.22 * W
-        alcance = 0.25 * W
+        alcance = 0.5 * W
         # músicos por delante en el sentido de la marcha, bailadors detrás;
         # apretados dentro de cada grupo, con hueco claro entre ambos
         signo = 1 if self.dir == 1 else -1

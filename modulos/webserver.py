@@ -77,6 +77,7 @@ def _construir_comando(d):
         ("sensibilidad", "--sensibilidad"), ("antisangrado", "--antisangrado"),
         ("tamano_ranas", "--tamano-ranas"), ("eventos_cada", "--eventos-cada"),
         ("midi_mapa", "--midi-mapa"), ("midi_desfase", "--midi-desfase"), ("midi_canal", "--midi-canal"),
+        ("midi_tempo", "--midi-tempo"),
         ("semilla", "--semilla"), ("titulo_duracion", "--titulo-duracion"),
         ("portada_duracion", "--portada-duracion"), ("crf", "--crf"), ("preset", "--preset"),
     )
@@ -324,6 +325,7 @@ PAGINA = r"""<!doctype html>
       <div class="campo"><label>Mapa (--midi-mapa)</label><input type="text" id="midi_mapa" placeholder="midi_mapa.ini"></div>
       <div class="campo"><label>Desfase (s)</label><input type="number" id="midi_desfase" value="0" step="0.1"></div>
       <div class="campo"><label>Canal (1-16)</label><input type="number" id="midi_canal" min="1" max="16"></div>
+      <div class="campo"><label>Tempo (BPM, si descuadra)</label><input type="number" id="midi_tempo" placeholder="del archivo"></div>
     </div>
   </fieldset>
   <fieldset>
@@ -434,6 +436,7 @@ function recogerFormulario(umbralA, umbralB) {
     midi_mapa: document.getElementById('midi_mapa').value || null,
     midi_desfase: num('midi_desfase'),
     midi_canal: num('midi_canal'),
+    midi_tempo: num('midi_tempo'),
     ancho: num('ancho'), alto: num('alto'), fps: num('fps'), crf: num('crf'),
     preset: document.getElementById('preset').value,
     duracion: num('duracion'), semilla: num('semilla'),

@@ -116,8 +116,18 @@ def _leer_pista(datos, n_pista):
     return eventos
 
 
-def leer_notas(ruta):
-    """Lee un .mid y devuelve las notas con tiempos en segundos, ordenadas."""
+def leer_notas(ruta, tempo_fijo=None):
+    """
+    Lee un .mid y devuelve las notas con tiempos en segundos, ordenadas.
+
+    tempo_fijo: BPM a usar para todo el archivo, ignorando los eventos de
+    tempo que traiga (o el valor por defecto de 120 si no trae ninguno).
+    Muchos DAW, al exportar una pista MIDI que solo son marcadores de
+    tiempo (no música de verdad), no incrustan el tempo real del proyecto
+    (o incrustan 120 a secas); si los eventos salen descuadrados respecto
+    al audio, es casi seguro que sea esto, y el BPM real del proyecto es
+    tempo_defecto * (tiempo_que_sale / tiempo_que_debería_salir).
+    """
     with open(ruta, "rb") as f:
         datos = f.read()
     if datos[:4] != b"MThd":
@@ -139,13 +149,15 @@ def leer_notas(ruta):
 
     # ticks -> segundos con el mapa de tempo (los tempos van antes que las notas del mismo tick)
     eventos.sort(key=lambda e: (e[0], 0 if e[1] == "tempo" else 1))
-    tempo, tick_ant, seg = 500000, 0, 0.0  # 120 bpm por defecto
+    tempo_inicial = round(60e6 / tempo_fijo) if tempo_fijo else 500000  # 120 bpm por defecto
+    tempo, tick_ant, seg = tempo_inicial, 0, 0.0
     abiertas, notas = {}, []
     for e in eventos:
         seg += (e[0] - tick_ant) * tempo / ppq / 1e6
         tick_ant = e[0]
         if e[1] == "tempo":
-            tempo = e[2]
+            if not tempo_fijo:  # con tempo_fijo se ignoran los cambios de tempo del archivo
+                tempo = e[2]
             continue
         _, tipo, canal, nota, vel, pista = e
         clave = (canal, nota)
@@ -253,7 +265,7 @@ def evento_de_nota(nota, mapa):
 
 
 def eventos_midi(ruta, fps, W, H, tipos, mapa=None, desfase=0.0, canal=None,
-                 n_frames=None, semilla=0, max_simultaneos=6):
+                 n_frames=None, semilla=0, max_simultaneos=6, tempo=None):
     """
     Devuelve [(fotograma_inicio, evento)] listo para mezclar con la agenda aleatoria,
     y un resumen {nombre_nota: tipo} de lo que se ha usado.
@@ -261,6 +273,7 @@ def eventos_midi(ruta, fps, W, H, tipos, mapa=None, desfase=0.0, canal=None,
     - tipos: diccionario nombre -> clase de evento (eventos.TIPOS)
     - desfase: segundos a sumar a todas las notas (si el MIDI empieza antes o después)
     - canal: 1-16 para usar solo ese canal; None, todos
+    - tempo: BPM fijo a forzar si los eventos salen descuadrados del audio (ver leer_notas)
     - Cada evento recibe .velocidad (1-127) y .mantener (fotogramas que dura la nota)
     """
     import random
@@ -269,7 +282,7 @@ def eventos_midi(ruta, fps, W, H, tipos, mapa=None, desfase=0.0, canal=None,
     mapa = mapa if mapa is not None else cargar_mapa()
     agenda, usados, ignoradas, desconocidos = [], {}, 0, set()
     fin_activos = []
-    for nota in leer_notas(ruta):
+    for nota in leer_notas(ruta, tempo):
         if canal is not None and nota.canal != canal - 1:
             continue
         tipo = evento_de_nota(nota, mapa)

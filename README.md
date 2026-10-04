@@ -80,6 +80,7 @@ python ranas.py --a audio/A.mp3 --b audio/B.mp3 --mezcla audio/master.mp3 --umbr
 | `--midi-mapa otro.ini` | Mapa nota → evento. Por defecto, `midi_mapa.ini` junto a `ranas.py`. |
 | `--midi-desfase -0.5` | Segundos a sumar a las notas MIDI (negativo = antes). |
 | `--midi-canal 10` | Usar solo las notas de ese canal MIDI. |
+| `--midi-tempo 103` | Fuerza este BPM para leer el MIDI, si los eventos salen descuadrados del audio (ver más abajo). |
 | `--semilla 42` | Repite exactamente el mismo orden de eventos. |
 | `--accesorios sombrero gafas` | Accesorio de cada rana: `sombrero`, `gafas` o `nada`. |
 | `--tamano-ranas 0.8` | Tamaño de las ranas. |
@@ -167,6 +168,7 @@ pedo        = nada        # el pedo no se lanza desde MIDI (pero sigue saliendo 
 - El MIDI se suma a los eventos aleatorios. Si en un episodio quieres solo los del MIDI, añade `--eventos-cada 0`.
 - `--midi-desfase -0.5` adelanta todas las notas medio segundo, por si el MIDI no empieza a la vez que el audio.
 - `--midi-canal 10` usa solo las notas de ese canal.
+- Si los eventos salen descuadrados del audio (siempre adelantados o retrasados, cada vez más cuanto más avanza el vídeo), el `.mid` probablemente no trae el tempo real del proyecto — muchos DAW no lo incrustan en una pista que solo son marcadores, o incrustan 120 BPM a secas. `--midi-tempo BPM` fuerza el tempo correcto e ignora el que traiga el archivo. Para calcularlo: `120 * (segundo_que_sale / segundo_que_debería_salir)`.
 
 ### Lista de eventos
 

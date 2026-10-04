@@ -117,6 +117,9 @@ def main():
                     help="Segundos a sumar a las notas MIDI (negativo = antes)")
     ap.add_argument("--midi-canal", type=int, choices=range(1, 17), metavar="1-16",
                     help="Usar solo las notas de este canal MIDI")
+    ap.add_argument("--midi-tempo", type=float, metavar="BPM",
+                    help="Fuerza este tempo para leer el MIDI, si los eventos salen descuadrados del audio "
+                         "(el archivo no trae el tempo real, o trae uno que no es)")
     ap.add_argument("--semilla", type=int, help="Semilla para repetir el mismo orden de eventos")
     ap.add_argument("--titulo", help='Título de entrada (p. ej. "Bufotes Episodio 94"), aparece tras la portada')
     ap.add_argument("--titulo-duracion", type=float, default=10.0, metavar="SEG",
@@ -215,7 +218,8 @@ def main():
     agenda = agenda + agenda2
     if args.midi:
         agenda_midi, usados = eventos_midi(args.midi, fps, W, H, TIPOS, mapa_midi,
-                                           args.midi_desfase, args.midi_canal, n, semilla)
+                                           args.midi_desfase, args.midi_canal, n, semilla,
+                                           tempo=args.midi_tempo)
         agenda = agenda + agenda_midi
         if usados:
             notas = sorted(usados.items(), key=lambda kv: kv[0])
