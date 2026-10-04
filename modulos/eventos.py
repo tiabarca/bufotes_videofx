@@ -18,7 +18,7 @@ import random
 
 from PIL import Image, ImageDraw
 
-from escena import X_RANAS, Y_CAMI, Y_FRENTE
+from .escena import X_RANAS, Y_CAMI, Y_FRENTE
 
 SS = 2  # supersampling de los sprites
 

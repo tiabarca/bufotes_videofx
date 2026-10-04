@@ -28,8 +28,8 @@ import random
 
 from PIL import Image, ImageDraw, ImageFont
 
-from escena import X_RANAS, Y_CAMI, Y_FRENTE
-from eventos import SS, TIPOS, Evento, _reducir
+from .escena import X_RANAS, Y_CAMI, Y_FRENTE
+from .eventos import SS, TIPOS, Evento, _reducir
 
 
 def dibujar_cabeza_cerdo(k, ojos_abiertos=True, hocico=0.0, orejas=0.0):

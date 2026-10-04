@@ -62,7 +62,7 @@
       "name": "Vista previa del fondo",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/escena.py",
+      "program": "${workspaceFolder}/modulos/escena.py",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
     }

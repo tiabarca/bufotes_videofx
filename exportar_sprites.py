@@ -36,7 +36,7 @@ import functools
 import math
 import os
 
-import eventos as ev
+from modulos import eventos as ev
 
 # (clave, función de dibujo, k = f(escala), lista de parámetros)
 # Replican exactamente los k y parámetros que usa cada clase de eventos.py,

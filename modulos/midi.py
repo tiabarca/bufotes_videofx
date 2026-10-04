@@ -168,7 +168,8 @@ def leer_notas(ruta):
 LATINAS = {"DO": "C", "RE": "D", "MI": "E", "FA": "F", "SOL": "G", "LA": "A", "SI": "B"}
 _RE_NOTA = re.compile(r"^(DO|RE|MI|FA|SOL|LA|SI|[A-G])([#B]?)(-?\d+)?$")
 
-MAPA_ARCHIVO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "midi_mapa.ini")
+MAPA_ARCHIVO = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                            "midi_mapa.ini")  # raíz del proyecto, no modulos/
 NADA = {"", "-", "NADA", "NINGUNO", "NONE", "NULL", "OFF"}
 
 

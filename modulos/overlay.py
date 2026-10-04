@@ -4,9 +4,10 @@ import os
 
 from PIL import Image, ImageDraw, ImageFont
 
-RUTA_FUENTE = os.path.join(os.path.dirname(__file__), "media", "fuentes", "PermanentMarker-Regular.ttf")
-RUTA_LOGO = os.path.join(os.path.dirname(__file__), "media", "logo.png")
-RUTA_PORTADA = os.path.join(os.path.dirname(__file__), "media", "portada.jpeg")
+_RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # raíz del proyecto, no modulos/
+RUTA_FUENTE = os.path.join(_RAIZ, "media", "fuentes", "PermanentMarker-Regular.ttf")
+RUTA_LOGO = os.path.join(_RAIZ, "media", "logo.png")
+RUTA_PORTADA = os.path.join(_RAIZ, "media", "portada.jpeg")
 
 # colores sacados del propio logo: amarillo del rótulo, marino del borde
 AMARILLO = (247, 193, 0, 255)

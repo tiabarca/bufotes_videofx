@@ -8,8 +8,8 @@ import numpy as np
 
 
 def buscar_ffmpeg():
-    """ffmpeg junto al script (útil en Windows) o, si no, el del PATH."""
-    carpeta = os.path.dirname(os.path.abspath(__file__))
+    """ffmpeg junto a ranas.py (útil en Windows) o, si no, el del PATH."""
+    carpeta = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # raíz del proyecto, no modulos/
     for nombre in ("ffmpeg.exe", "ffmpeg"):
         ruta = os.path.join(carpeta, nombre)
         if os.path.isfile(ruta):

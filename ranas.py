@@ -26,16 +26,16 @@ from collections import OrderedDict
 import numpy as np
 from PIL import Image, ImageDraw
 
-from audio import (FFMPEG, SR, cargar_audio, centroide_por_fotograma, diagnostico, estados_boca,
-                    nivel_por_fotograma, tasa_cruces_por_fotograma)
-from escena import (X_RANAS, Nubes, dibujar_canas, dibujar_microfonos, dibujar_molino, dibujar_nenufares,
-                     dibujar_reflejos, fondo_mallorquin, generar_canas, generar_microfonos, generar_molino,
-                     generar_nenufares, generar_reflejos)
-from eventos import SOLAPABLES, TIPOS, programar_eventos
-import eventos_extra  # noqa: F401  (registra los eventos nuevos en TIPOS)
-from midi import cargar_mapa, eventos_midi
-from overlay import cargar_logo, cargar_portada, con_alpha, dibujar_titulo, factor_portada, factor_titulo
-from personajes import cargar_sprites
+from modulos.audio import (FFMPEG, SR, cargar_audio, centroide_por_fotograma, diagnostico, estados_boca,
+                            nivel_por_fotograma, tasa_cruces_por_fotograma)
+from modulos.escena import (X_RANAS, Nubes, dibujar_canas, dibujar_microfonos, dibujar_molino, dibujar_nenufares,
+                             dibujar_reflejos, fondo_mallorquin, generar_canas, generar_microfonos,
+                             generar_molino, generar_nenufares, generar_reflejos)
+from modulos.eventos import SOLAPABLES, TIPOS, programar_eventos
+import modulos.eventos_extra  # noqa: F401  (registra los eventos nuevos en TIPOS)
+from modulos.midi import cargar_mapa, eventos_midi
+from modulos.overlay import cargar_logo, cargar_portada, con_alpha, dibujar_titulo, factor_portada, factor_titulo
+from modulos.personajes import cargar_sprites
 
 # la consola de Windows usa cp1252 y revienta con caracteres como → o ≈
 for _flujo in (sys.stdout, sys.stderr):
