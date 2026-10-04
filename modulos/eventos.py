@@ -455,7 +455,50 @@ class Evento:
         return None
 
 
-class Tractor(Evento):
+class EventoDeCruce(Evento):
+    """
+    Base para los eventos que cruzan la pantalla con x_lineal (tractor,
+    cerdo, pájaros, ovejas, motocultor, grillo). Al salir al azar cruzan de
+    un tirón en self.SEG segundos, como siempre. Lanzados desde MIDI, en
+    cambio, entran, se quedan quietos mientras dura la nota y salen
+    girando por donde han entrado: la duración real del evento depende de
+    cuánto se mantenga la nota, no de self.SEG.
+
+    Las subclases no tienen que tocar su _pos/sprites: solo precalcular
+    también los fotogramas espejados (ida y vuelta) y, en sprites(), usar
+    self._saliendo para elegir unos u otros.
+    """
+    SEG_ENTRA, SEG_SALE, MIN_ESPERA = 1.5, 1.5, 1.0
+
+    def __init__(self, W, H, fps, rng, assets=None):
+        super().__init__(W, H, fps, rng, assets)
+        self._nota = False
+        self._saliendo = False
+
+    def ajustar_a_nota(self):
+        self._nota = True
+        self.f_entra = max(1, int(self.SEG_ENTRA * self.fps))
+        self.f_espera = max(int(self.MIN_ESPERA * self.fps), self.mantener)
+        self.f_sale = max(1, int(self.SEG_SALE * self.fps))
+        self.duracion = self.f_entra + self.f_espera + self.f_sale
+
+    def x_lineal(self, t, ancho, segundos):
+        if not self._nota:
+            return super().x_lineal(t, ancho, segundos)
+        x_fuera = -ancho if self.dir == 1 else self.W + ancho
+        x_dentro = 0.5 * self.W
+        if t < self.f_entra:
+            self._saliendo = False
+            return x_fuera + (t / self.f_entra) * (x_dentro - x_fuera)
+        if t < self.f_entra + self.f_espera:
+            self._saliendo = False
+            return x_dentro
+        self._saliendo = True
+        p = min(1.0, (t - self.f_entra - self.f_espera) / self.f_sale)
+        return x_dentro + p * (x_fuera - x_dentro)
+
+
+class Tractor(EventoDeCruce):
     capa = "fondo"
     SEG = 13
 
@@ -464,6 +507,7 @@ class Tractor(Evento):
         k = SS * 0.55 * self.escala
         esp = self.dir == -1
         self.frames = _marcos(assets, "tractor", dibujar_tractor, k, [i / 8 for i in range(8)], esp)
+        self.frames_vuelta = [im.transpose(Image.FLIP_LEFT_RIGHT) for im in self.frames]
         self.humo = [_reducir(dibujar_humo(k, e / 10)) for e in range(10)]
         self.duracion = int(self.SEG * fps)
         self.ancho = self.frames[0].width
@@ -476,23 +520,25 @@ class Tractor(Evento):
 
     def sprites(self, t):
         x, y = self._pos(t)
+        frames = self.frames_vuelta if self._saliendo else self.frames
+        dir_ = -self.dir if self._saliendo else self.dir  # hacia dónde mira/avanza ahora mismo
         out = []
         esc = self.frames[0].width * (152 / 260)  # posición del tubo de escape
-        ex = x + (esc if self.dir == 1 else self.frames[0].width - esc)
+        ex = x + (esc if dir_ == 1 else self.frames[0].width - esc)
         for j in range(4):  # bocanadas que se quedan atrás y suben
             edad = ((t / 4 + j * 2.5) % 10)
             im = self.humo[int(edad)]
-            hx = ex - self.dir * edad * 6 * self.escala - im.width / 2
+            hx = ex - dir_ * edad * 6 * self.escala - im.width / 2
             hy = y + 18 * self.escala - edad * 7 * self.escala - im.height / 2
             out.append((im, int(hx), int(hy)))
-        out.append((self.frames[(t // 2) % 8], int(x), y))
+        out.append((frames[(t // 2) % 8], int(x), y))
         return out
 
     def x_interes(self, t):
         return self._pos(t)[0] + self.ancho / 2
 
 
-class Cerdo(Evento):
+class Cerdo(EventoDeCruce):
     """El porc negre huye por el camí con una muchedumbre de payeses detrás, cuchillo y olla en alto."""
     capa = "fondo"
     SEG = 11
@@ -503,6 +549,7 @@ class Cerdo(Evento):
         esp = self.dir == -1
         # el porc, la mitad de grande
         self.cerdo = _marcos(assets, "cerdo", dibujar_cerdo_corriendo, k * 0.5, list(range(4)), esp)
+        self.cerdo_vuelta = [im.transpose(Image.FLIP_LEFT_RIGHT) for im in self.cerdo]
         self.ancho = self.cerdo[0].width
         n = rng.randint(4, 5)  # una muchedumbre de verdad
         self.payeses = []
@@ -511,9 +558,10 @@ class Cerdo(Evento):
             arma = "cuchillo" if j % 2 == 0 else "olla"
             dibujar = lambda k_, p, arma=arma: dibujar_payes(k_, p, arma)
             frames = _marcos(assets, f"payes_{arma}", dibujar, k * 0.8, list(range(4)), esp)
+            frames_vuelta = [im.transpose(Image.FLIP_LEFT_RIGHT) for im in frames]
             retraso = retraso_base + j * rng.uniform(0.14, 0.22)  # cada uno un poco más atrás, desincronizados
             dy = rng.uniform(-4, 4) * self.escala
-            self.payeses.append((frames, retraso, dy))
+            self.payeses.append((frames, frames_vuelta, retraso, dy))
         self.y = (Y_CAMI - 0.03) * H  # junto al camí, cerca de por donde pasa el tractor
         self.duracion = int(self.SEG * fps)
 
@@ -522,19 +570,21 @@ class Cerdo(Evento):
 
     def sprites(self, t):
         out = []
-        for frames, retraso, dy in self.payeses:
+        for frames, frames_vuelta, retraso, dy in self.payeses:
             x = self._x(t, retraso)
-            im = frames[(t // 3) % 4]
+            fr = frames_vuelta if self._saliendo else frames
+            im = fr[(t // 3) % 4]
             out.append((im, int(x), int(self.y - im.height + dy)))
         xc = self._x(t)
-        out.append((self.cerdo[(t // 2) % 4], int(xc), int(self.y - self.cerdo[0].height)))
+        cerdo = self.cerdo_vuelta if self._saliendo else self.cerdo
+        out.append((cerdo[(t // 2) % 4], int(xc), int(self.y - self.cerdo[0].height)))
         return out
 
     def x_interes(self, t):
         return self._x(t) + self.ancho / 2
 
 
-class Pajaros(Evento):
+class Pajaros(EventoDeCruce):
     capa = "fondo"
     SEG = 9
 
@@ -546,6 +596,7 @@ class Pajaros(Evento):
             _marcos(assets, "pajaro", dibujar_pajaro, SS * 1.0 * self.escala * s, params, esp)
             for s in (1.0, 0.8)
         ]
+        self.frames_vuelta = [[im.transpose(Image.FLIP_LEFT_RIGHT) for im in grupo] for grupo in self.frames]
         self.duracion = int(self.SEG * fps)
         self.y0 = rng.uniform(0.08, 0.2)
         self.ancho = self.frames[0][0].width
@@ -560,7 +611,8 @@ class Pajaros(Evento):
         out = []
         for n in (1, 0):
             x, y = self._pos(t, n)
-            im = self.frames[n][(t // 2 + n * 3) % 8]
+            frames = self.frames_vuelta if self._saliendo else self.frames
+            im = frames[n][(t // 2 + n * 3) % 8]
             out.append((im, int(x), int(y)))
         return out
 
@@ -718,7 +770,7 @@ class Mosquito(_Presa):
         return None
 
 
-class Ovejas(Evento):
+class Ovejas(EventoDeCruce):
     """Un rebaño pasturando despacio por el campo, con un perro que lo persigue de un lado a otro."""
     capa = "fondo"
     SEG = 24  # 19 / 0.8: van a un 80% de la velocidad de antes
@@ -734,7 +786,9 @@ class Ovejas(Evento):
         # cada oveja con su propio desplazamiento y fase de pastar, para que no vayan a la vez
         self.ovejas = [(rng.uniform(-0.09, 0.09) * W, rng.randrange(12)) for _ in range(n)]
         self.frames_oveja = pasto
+        self.frames_oveja_vuelta = [im.transpose(Image.FLIP_LEFT_RIGHT) for im in pasto]
         self.perro = _marcos(assets, "perro", dibujar_perro, k * 1.1, list(range(4)), esp)
+        self.perro_vuelta = [im.transpose(Image.FLIP_LEFT_RIGHT) for im in self.perro]
         self.y = (Y_CAMI - 0.01) * H  # cerca del camí, no sobre la pared de marjada
         self.duracion = int(self.SEG * fps)
 
@@ -746,11 +800,13 @@ class Ovejas(Evento):
 
     def sprites(self, t):
         xb = self._x_rebano(t)
+        frames_oveja = self.frames_oveja_vuelta if self._saliendo else self.frames_oveja
         out = []
         for off, fase in self.ovejas:
-            im = self.frames_oveja[(t // 4 + fase) % len(self.frames_oveja)]
+            im = frames_oveja[(t // 4 + fase) % len(frames_oveja)]
             out.append((im, int(xb + off), int(self.y - im.height)))
-        perro = self.perro[(t // 2) % 4]
+        perro_frames = self.perro_vuelta if self._saliendo else self.perro
+        perro = perro_frames[(t // 2) % 4]
         out.append((perro, int(self._x_perro(t)), int(self.y - perro.height + 4 * self.escala)))
         return out
 

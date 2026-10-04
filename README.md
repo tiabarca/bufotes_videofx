@@ -143,6 +143,7 @@ pedo        = nada        # el pedo no se lanza desde MIDI (pero sigue saliendo 
 
 - La **fuerza de la nota** (velocity) cambia el tamaño o la intensidad del evento: un cerdo más grande, un grillo que salta más alto…
 - Los eventos que **asoman** (cerdo_asoma, rana_guapa, muchedumbre, asnos, bombilla) se quedan en pantalla mientras dure la nota.
+- Los que **cruzan la pantalla** (tractor, cerdo, pájaros, ovejas, motocultor, grillo) entran, se quedan quietos mientras dure la nota y salen girando por donde han venido; la duración del evento sale de la nota, no de su tiempo de cruce habitual al azar.
 - Pueden coincidir varios eventos a la vez (de la agenda aleatoria y del MIDI); las ranas miran al que haya empezado más recientemente.
 - El MIDI se suma a los eventos aleatorios. Si en un episodio quieres solo los del MIDI, añade `--eventos-cada 0`.
 - `--midi-desfase -0.5` adelanta todas las notas medio segundo, por si el MIDI no empieza a la vez que el audio.

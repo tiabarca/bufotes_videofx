@@ -29,7 +29,7 @@ import random
 from PIL import Image, ImageDraw, ImageFont
 
 from .escena import X_RANAS, Y_CAMI, Y_FRENTE
-from .eventos import SS, TIPOS, Evento, _reducir
+from .eventos import SS, TIPOS, Evento, EventoDeCruce, _reducir
 
 
 def dibujar_cabeza_cerdo(k, ojos_abiertos=True, hocico=0.0, orejas=0.0):
@@ -160,10 +160,12 @@ class CerdoAsoma(Evento):
         return self.cx
 
 
-class Grillo(Evento):
-    """Un grillo cruza por delante a saltos."""
+class Grillo(EventoDeCruce):
+    """Un grillo cruza por delante a saltos. Por MIDI: entra, salta quieto en un sitio
+    y se va dando media vuelta por donde ha venido al soltar la nota."""
     capa = "frente"
     SEG = 7
+    SEG_ENTRA, SEG_SALE = 1.0, 1.0
 
     def __init__(self, W, H, fps, rng, assets=None):
         super().__init__(W, H, fps, rng, assets)
@@ -172,16 +174,18 @@ class Grillo(Evento):
         k = SS * 0.85 * self.escala
         self.quieto = _reducir(dibujar_grillo(k, 0.0), esp)
         self.saltando = _reducir(dibujar_grillo(k, 1.0), esp)
+        self.quieto_vuelta = self.quieto.transpose(Image.FLIP_LEFT_RIGHT)
+        self.saltando_vuelta = self.saltando.transpose(Image.FLIP_LEFT_RIGHT)
         self.ancho = self.quieto.width
         self.duracion = int(self.SEG * fps)
         self.n_saltos = rng.randint(6, 9)
 
     def _estado(self, t):
-        p = t / self.duracion
-        x = -self.ancho + p * (self.W + 2 * self.ancho)
-        if self.dir == -1:
-            x = self.W - x - self.ancho
-        fase = (p * self.n_saltos) % 1.0
+        x = self.x_lineal(t, self.ancho, self.SEG)
+        # mismo ritmo de saltos de siempre (n_saltos a lo largo de SEG segundos),
+        # calculado por tiempo en vez de fracción del total para que no cambie
+        # si la duración real varía por venir de una nota MIDI
+        fase = (t / self.fps * self.n_saltos / self.SEG) % 1.0
         vuelo = 0.55  # parte de cada ciclo en el aire
         altura = (0.08 + 0.1 * self.velocidad / 127) * self.H
         if fase < vuelo:
@@ -191,7 +195,10 @@ class Grillo(Evento):
 
     def sprites(self, t):
         x, alto, en_aire = self._estado(t)
-        im = self.saltando if en_aire else self.quieto
+        if self._saliendo:
+            im = self.saltando_vuelta if en_aire else self.quieto_vuelta
+        else:
+            im = self.saltando if en_aire else self.quieto
         y = int(Y_FRENTE * self.H) - im.height - int(alto)
         return [(im, int(x), y)]
 
@@ -677,10 +684,11 @@ def dibujar_motocultor(k, fase, paso):
     return img
 
 
-class Motocultor(Evento):
+class Motocultor(EventoDeCruce):
     """Motocultor por el camí, lento y echando humo negro a lo bestia."""
     capa = "fondo"
     SEG = 20
+    SEG_ENTRA, SEG_SALE = 2.5, 2.5
 
     def __init__(self, W, H, fps, rng, assets=None):
         super().__init__(W, H, fps, rng, assets)
@@ -688,6 +696,7 @@ class Motocultor(Evento):
         k = SS * 0.8 * self.escala
         esp = self.dir == -1
         self.frames = [[_reducir(dibujar_motocultor(k, i / 6, p), esp) for p in range(4)] for i in range(6)]
+        self.frames_vuelta = [[im.transpose(Image.FLIP_LEFT_RIGHT) for im in fila] for fila in self.frames]
         self.ancho = self.frames[0][0].width
         self.alto = self.frames[0][0].height
         self.duracion = int(self.SEG * fps)
@@ -708,18 +717,20 @@ class Motocultor(Evento):
 
     def sprites(self, t):
         x, y = self._pos(t)
+        dir_ = -self.dir if self._saliendo else self.dir  # hacia dónde mira/avanza ahora mismo
         esc = self.ancho * (182 / 240)
-        ex = x + (esc if self.dir == 1 else self.ancho - esc)
+        ex = x + (esc if dir_ == 1 else self.ancho - esc)
         ey = y + self.alto * (80 / 190)
         out = []
         n = 14  # muchas bocanadas: es un motocultor viejo
         for j in range(n):
             edad = (t / 2 + j * 16 / n) % 16
             im = self.humo[int(edad)]
-            hx = ex - self.dir * edad * 9 * self.escala + self.desv[j] * edad * 2 - im.width / 2
+            hx = ex - dir_ * edad * 9 * self.escala + self.desv[j] * edad * 2 - im.width / 2
             hy = ey - edad * 9 * self.escala - im.height / 2
             out.append((im, int(hx), int(hy)))
-        out.append((self.frames[(t // 2) % 6][(t // 6) % 4], int(x), y))
+        frames = self.frames_vuelta if self._saliendo else self.frames
+        out.append((frames[(t // 2) % 6][(t // 6) % 4], int(x), y))
         return out
 
     def x_interes(self, t):
