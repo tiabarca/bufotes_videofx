@@ -15,6 +15,3 @@ pruebas/
 
 # ffmpeg local en Windows
 ffmpeg.exe
-
-# PNG generados por exportar_sprites.py (reproducibles, no hace falta versionarlos)
-sprites_editables/
