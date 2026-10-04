@@ -883,7 +883,7 @@ class Cabra(Asoma):
     SUBIR, BAJAR, MIN_ARRIBA, POR_DEFECTO = 0.4, 0.4, 1.8, 2.5
 
     def dibujar(self):
-        k = SS * (0.6 + 0.25 * self.velocidad / 127) * self.escala
+        k = SS * (1.1 + 0.4 * self.velocidad / 127) * self.escala
         self.payes = [_reducir(dibujar_payes_tambor(k, f)) for f in range(2)]
         kc = k * 0.8
         # False/True de espejado puro (sin dir): mira a la derecha / a la izquierda
@@ -894,7 +894,7 @@ class Cabra(Asoma):
             self.cabra[(coz, True)] = im.transpose(Image.FLIP_LEFT_RIGHT)
         self.ancho_payes, self.alto = self.payes[0].size
         self.ancho_cabra = self.cabra[(False, False)].width
-        self.cx = self.rng.choice((0.32, 0.68)) * self.W
+        self.cx = self.rng.choice((0.4, 0.6)) * self.W  # entre las dos ranas, lejos de los micros
         self.lado = self.rng.choice((1, -1))  # 1: entra por la izquierda
         # al entrar mira hacia el payès (hacia la derecha si viene de la izquierda);
         # para que la coz conecte de verdad tiene que golpear de espaldas, así que
@@ -928,7 +928,7 @@ class Cabra(Asoma):
         f = self.fuera(t)
         ta = self.t_arriba(t)
         im = self.payes[(t // 2) % 2]
-        y = int(self.H - self.alto * f)
+        y = int(Y_FRENTE * self.H - self.alto * f)  # de pie en el suelo, no asomando por el borde
         estado = self._cabra_estado(ta) if ta >= 0 else None
         bote = int(6 * self.escala) if estado is not None and self.t_coz <= ta < self.t_vuelve else 0
         out = [(im, int(self.cx - self.ancho_payes / 2), y - bote)]
