@@ -107,9 +107,6 @@ def main():
                     help="No abrir con la portada (media/portada.jpg) solapada sobre el arranque")
     ap.add_argument("--portada-duracion", type=float, default=5.0, metavar="SEG",
                     help="Cuánto tarda la portada en desvanecerse sobre la escena, al principio")
-    ap.add_argument("--sin-recorte", action="store_true",
-                    help="No recortar el silencio inicial antes de la primera palabra "
-                         "(con --mezcla nunca se recorta, por si lleva música de entrada)")
     ap.add_argument("--crf", type=int, default=23, help="Calidad x264 (menor = mejor, más pesado)")
     ap.add_argument("--preset", default="veryfast", help="Preset x264")
     args = ap.parse_args()
@@ -143,21 +140,6 @@ def main():
     boca = [estados_boca(da, db, za, ca, args.sensibilidad, args.antisangrado, umb[0]),
             estados_boca(db, da, zb, cb, args.sensibilidad, args.antisangrado, umb[1])]
 
-    # recorta el silencio inicial (antes de que nadie hable) para que la
-    # conversación arranque justo al acabar la portada, no después de un hueco.
-    # Solo si no hay --mezcla: esa pista puede llevar música de entrada que no
-    # sale en los micros sueltos de A/B, y no hay forma de distinguirla desde
-    # aquí del silencio real, así que un máster ya montado se deja intacto.
-    recorte_seg = 0.0
-    if not args.sin_recorte and not args.mezcla:
-        hablando = (boca[0] > 0) | (boca[1] > 0)
-        primero = int(np.argmax(hablando)) if hablando.any() else 0
-        recorte = max(0, primero - int(0.3 * fps))
-        if recorte:
-            boca = [b[recorte:] for b in boca]
-            n -= recorte
-            recorte_seg = recorte / fps
-            print(f"  Recortados {recorte_seg:.1f}s de silencio inicial")
     parpadeo = [horario_parpadeos(n, fps, semilla + 1), horario_parpadeos(n, fps, semilla + 2)]
     print(f"  {n} fotogramas ({n / fps / 60:.1f} min). "
           f"A habla {np.mean(boca[0] > 0) * 100:.0f}% · B habla {np.mean(boca[1] > 0) * 100:.0f}%")
@@ -265,10 +247,7 @@ def main():
         return img.tobytes()
 
     # --- ffmpeg: fotogramas crudos por stdin + audio
-    # el mismo recorte de silencio inicial que se aplicó a boca/n, para que
-    # el audio real arranque exactamente donde arranca el vídeo
-    ss = ["-ss", f"{recorte_seg:.3f}"] if recorte_seg else []
-    audio_in = ss + ["-i", args.mezcla] if args.mezcla else ss + ["-i", args.a] + ss + ["-i", args.b]
+    audio_in = ["-i", args.mezcla] if args.mezcla else ["-i", args.a, "-i", args.b]
     filtro = [] if args.mezcla else ["-filter_complex",
                                      "[1:a][2:a]amix=inputs=2:duration=longest:normalize=0[aout]"]
     mapa_audio = ["-map", "1:a"] if args.mezcla else ["-map", "[aout]"]
