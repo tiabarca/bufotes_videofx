@@ -42,6 +42,24 @@ Crea una carpeta `audio/` con `A.mp3` (rana izquierda), `B.mp3` (rana derecha) y
 2. **Prueba**: renderiza 1 minuto con eventos frecuentes para ver cómo queda.
 3. **Episodio completo**: te pide el umbral y el nombre del vídeo.
 
+## Interfaz web (sin terminal)
+
+```
+python ranas.py --webserver
+python ranas.py --webserver --puerto 8080
+```
+
+Arranca un servidor local y abre `http://127.0.0.1:8080/` en el navegador.
+Desde ahí: arrastras la pista A, la B, y opcionalmente la mezcla y el MIDI
+(también se puede hacer clic en cada recuadro para elegir el archivo),
+pones el título del capítulo, marcas qué eventos quieres y pulsas
+**Generar vídeo**. Si dejas marcado "calcular el umbral automáticamente",
+analiza A y B antes de arrancar y usa el umbral sugerido sin que haga falta
+copiarlo a mano. Se ve el mismo log que saldría por terminal, y al acabar
+aparece un botón para descargar el vídeo. Es para un episodio a la vez (es
+una herramienta local, no pensada para varios usuarios simultáneos). Ctrl+C
+en la terminal la para.
+
 ## Uso desde la terminal
 
 ```
@@ -86,6 +104,7 @@ eventos.py      tractor, cerdo, pájaros, gusano, ovejas, xeremiers, bronca y la
 eventos_extra.py  ocho eventos más (se registran solos al importar el módulo)
 midi.py         lector de archivos .mid y del mapa nota → evento (midi_mapa.ini)
 overlay.py      logo, portada de entrada y título (media/logo.png, media/portada.jpeg, media/fuentes/)
+webserver.py    interfaz web local (--webserver): arrastra archivos, rellena el formulario, lanza ranas.py
 ```
 
 ### Logo, portada y título de entrada

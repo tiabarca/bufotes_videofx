@@ -82,8 +82,11 @@ def horario_parpadeos(n, fps, semilla):
 
 def main():
     ap = argparse.ArgumentParser(description="Podcast de 2 pistas → vídeo de ranas en Mallorca")
-    ap.add_argument("--a", required=True, help="Pista del interlocutor A (rana izquierda)")
-    ap.add_argument("--b", required=True, help="Pista del interlocutor B (rana derecha)")
+    ap.add_argument("--webserver", action="store_true",
+                    help="Arranca una interfaz web local (arrastra los archivos, rellena el formulario)")
+    ap.add_argument("--puerto", type=int, default=8080, help="Puerto del --webserver")
+    ap.add_argument("--a", help="Pista del interlocutor A (rana izquierda)")
+    ap.add_argument("--b", help="Pista del interlocutor B (rana derecha)")
     ap.add_argument("--mezcla", help="Audio final del vídeo (si no, se mezclan A y B)")
     ap.add_argument("-o", "--salida", default="episodio.mp4")
     ap.add_argument("--assets", help="Carpeta con fondo.png y sprites propios de las ranas")
@@ -126,6 +129,13 @@ def main():
     ap.add_argument("--crf", type=int, default=23, help="Calidad x264 (menor = mejor, más pesado)")
     ap.add_argument("--preset", default="veryfast", help="Preset x264")
     args = ap.parse_args()
+
+    if args.webserver:
+        from modulos.webserver import arrancar
+        return arrancar(args.puerto)
+
+    if not args.a or not args.b:
+        ap.error("--a y --b son obligatorios (o usa --webserver)")
 
     if not (os.path.isfile(FFMPEG) or shutil.which(FFMPEG)):
         sys.exit("No encuentro ffmpeg. Instálalo o copia ffmpeg.exe junto a ranas.py.")
