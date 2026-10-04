@@ -190,14 +190,21 @@ def main():
     titulo = dibujar_titulo(args.titulo, W, escala) if args.titulo else None
     y_titulo = int(0.1 * H)
 
-    tipos_normales = [t for t in args.eventos if t not in SOLAPABLES]
-    tipos_solapables = [t for t in args.eventos if t in SOLAPABLES]
+    # los eventos con una tecla asignada en el mapa MIDI no salen al azar:
+    # solo se lanzan cuando suena esa nota, para no duplicarlos
+    mapa_midi = cargar_mapa(args.midi_mapa) if args.midi else None
+    asignados = set(mapa_midi.values()) if mapa_midi else set()
+    if asignados:
+        print(f"  Solo por MIDI (no al azar): {', '.join(sorted(asignados))}")
+
+    tipos_normales = [t for t in args.eventos if t not in SOLAPABLES and t not in asignados]
+    tipos_solapables = [t for t in args.eventos if t in SOLAPABLES and t not in asignados]
     agenda = programar_eventos(n, fps, W, H, tipos_normales, args.eventos_cada, semilla, args.assets)
     # los solapables son un chiste puntual, no un relleno constante: mucho más espaciados
     agenda2 = programar_eventos(n, fps, W, H, tipos_solapables, args.eventos_cada * 5, semilla + 5000, args.assets)
     agenda = agenda + agenda2
     if args.midi:
-        agenda_midi, usados = eventos_midi(args.midi, fps, W, H, TIPOS, cargar_mapa(args.midi_mapa),
+        agenda_midi, usados = eventos_midi(args.midi, fps, W, H, TIPOS, mapa_midi,
                                            args.midi_desfase, args.midi_canal, n, semilla)
         agenda = agenda + agenda_midi
         if usados:
