@@ -18,6 +18,8 @@ import random
 
 from PIL import Image, ImageDraw
 
+from . import sprite_colla as _sprite_colla
+
 from .escena import X_RANAS, Y_CAMI, Y_FRENTE
 
 SS = 2  # supersampling de los sprites
@@ -274,120 +276,27 @@ def dibujar_perro(k, paso=0):
 
 
 def dibujar_xeremier(k, paso):
-    """Xeremier: toca la xeremia (gaita mallorquina) mientras camina. paso 0..3 anima las piernas."""
-    w, h = int(120 * k), int(130 * k)
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    piel, camisa, oscuro = (228, 182, 150), (95, 70, 140), (40, 36, 40)
-    bolsa, madera = (190, 170, 90), (120, 85, 55)
-
-    def E(x0, y0, x1, y1, **kw):
-        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
-
-    def R(x0, y0, x1, y1, **kw):
-        d.rectangle([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
-
-    osc = [0, 10, 0, -10][paso % 4]
-    for px, fase in ((38, 1), (58, -1)):
-        dx = osc * fase
-        d.polygon([((px - 6) * k, 78 * k), ((px + 6) * k, 78 * k), ((px + 4 + dx) * k, 118 * k),
-                   ((px - 8 + dx) * k, 118 * k)], fill=oscuro)
-    R(26, 42, 70, 82, fill=camisa)
-    E(30, 10, 64, 44, fill=piel)
-    d.chord([26 * k, 2 * k, 68 * k, 26 * k], 180, 360, fill=(90, 80, 70))
-
-    E(58, 46, 94, 80, fill=bolsa, outline=oscuro, width=max(1, int(1.5 * k)))  # bolsa
-    d.line([(80 * k, 48 * k), (100 * k, 16 * k)], fill=madera, width=max(1, int(4 * k)))  # roncón
-    d.line([(68 * k, 76 * k), (72 * k, 108 * k)], fill=madera, width=max(1, int(4 * k)))  # puntero
-    d.line([(46 * k, 24 * k), (62 * k, 50 * k)], fill=madera, width=max(1, int(3 * k)))  # soplador
-    d.line([(26 * k, 50 * k), (64 * k, 72 * k)], fill=piel, width=max(1, int(6 * k)))  # brazo
-    return img
+    """Xeremier: toca la xeremia (gaita mallorquina) mientras camina. paso 0..3 anima las piernas.
+    Dibujo en modulos/sprite_colla.py."""
+    return _sprite_colla.dibujar_xeremier(k, paso, suavizado=2)
 
 
 def dibujar_fabioler(k, paso):
-    """Flabiolaire: toca el flabiol con una mano y el tamborí con la otra. paso 0..3 anima las piernas."""
-    w, h = int(100 * k), int(130 * k)
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    piel, camisa, oscuro = (228, 182, 150), (60, 110, 90), (40, 36, 40)
-    madera, parche = (120, 85, 55), (225, 215, 195)
-
-    def E(x0, y0, x1, y1, **kw):
-        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
-
-    def R(x0, y0, x1, y1, **kw):
-        d.rectangle([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
-
-    osc = [0, 10, 0, -10][paso % 4]
-    for px, fase in ((34, 1), (54, -1)):
-        dx = osc * fase
-        d.polygon([((px - 6) * k, 78 * k), ((px + 6) * k, 78 * k), ((px + 4 + dx) * k, 118 * k),
-                   ((px - 8 + dx) * k, 118 * k)], fill=oscuro)
-    R(22, 42, 66, 82, fill=camisa)
-    E(26, 10, 60, 44, fill=piel)
-    d.chord([22 * k, 2 * k, 64 * k, 26 * k], 180, 360, fill=(90, 80, 70))
-
-    d.line([(40 * k, 24 * k), (36 * k, 58 * k)], fill=madera, width=max(1, int(3 * k)))  # flabiol
-    d.line([(20 * k, 46 * k), (36 * k, 40 * k)], fill=piel, width=max(1, int(5 * k)))  # brazo izq
-
-    E(60, 52, 86, 70, fill=parche, outline=oscuro, width=max(1, int(2 * k)))  # tamborí
-    d.line([(66 * k, 50 * k), (76 * k, 34 * k)], fill=madera, width=max(1, int(2.5 * k)))  # baqueta
-    d.line([(66 * k, 48 * k), (56 * k, 58 * k)], fill=piel, width=max(1, int(5 * k)))  # brazo que toca
-    return img
+    """Flabiolaire: flabiol con una mano y tamborí con la otra. paso 0..3 anima las piernas.
+    Dibujo en modulos/sprite_colla.py."""
+    return _sprite_colla.dibujar_fabioler(k, paso, suavizado=2)
 
 
 def dibujar_payes_baila(k, fase):
-    """Payés bailando un ball de bot: salta con los brazos en alto. fase 0..3."""
-    w, h = int(90 * k), int(135 * k)
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    piel, camisa, pantalon, oscuro = (228, 182, 150), (70, 120, 160), (240, 240, 235), (40, 36, 40)
-
-    def E(x0, y0, x1, y1, **kw):
-        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
-
-    def R(x0, y0, x1, y1, **kw):
-        d.rectangle([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
-
-    bote = [0, -10, 0, -6][fase % 4]
-    abre = [6, 14, 6, 2][fase % 4]
-    for px, sig in ((34, -1), (56, 1)):
-        d.polygon([((px - 6) * k, (72 + bote) * k), ((px + 6) * k, (72 + bote) * k),
-                   ((px + sig * abre + 4) * k, (118 + bote) * k),
-                   ((px + sig * abre - 6) * k, (118 + bote) * k)], fill=pantalon)
-    R(20, 36 + bote, 70, 76 + bote, fill=camisa)
-    E(24, 4 + bote, 58, 38 + bote, fill=piel)
-    d.chord([20 * k, (-4 + bote) * k, 62 * k, (20 + bote) * k], 180, 360, fill=(90, 80, 70))
-    brazos = [18, 30, 18, 8][fase % 4]
-    d.line([(24 * k, (44 + bote) * k), (6 * k, (44 + bote - brazos) * k)], fill=piel, width=max(1, int(6 * k)))
-    d.line([(66 * k, (44 + bote) * k), (84 * k, (44 + bote - brazos) * k)], fill=piel, width=max(1, int(6 * k)))
-    return img
+    """Ballador de ball de bot: salta con los brazos en alto y castanyoles. fase 0..3.
+    Dibujo en modulos/sprite_colla.py."""
+    return _sprite_colla.dibujar_payes_baila(k, fase, suavizado=2)
 
 
 def dibujar_payesa_baila(k, fase):
-    """Payesa bailando, con la falda volando y pañuelo en la cabeza. fase 0..3."""
-    w, h = int(90 * k), int(135 * k)
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    piel, blusa, falda, panuelo = (228, 182, 150), (250, 248, 240), (195, 60, 55), (210, 70, 90)
-
-    def E(x0, y0, x1, y1, **kw):
-        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
-
-    def R(x0, y0, x1, y1, **kw):
-        d.rectangle([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
-
-    bote = [0, -10, 0, -6][fase % 4]
-    vuelo = [10, 22, 10, 4][fase % 4]
-    d.polygon([(26 * k, (72 + bote) * k), (64 * k, (72 + bote) * k),
-               ((64 + vuelo) * k, (120 + bote) * k), ((26 - vuelo) * k, (120 + bote) * k)], fill=falda)
-    R(24, 38 + bote, 66, 74 + bote, fill=blusa)
-    E(26, 4 + bote, 58, 36 + bote, fill=piel)
-    d.chord([24 * k, (-6 + bote) * k, 60 * k, (16 + bote) * k], 180, 360, fill=panuelo)
-    brazos = [16, 26, 16, 8][fase % 4]
-    d.line([(26 * k, (44 + bote) * k), (10 * k, (44 + bote - brazos) * k)], fill=piel, width=max(1, int(5 * k)))
-    d.line([(64 * k, (44 + bote) * k), (80 * k, (44 + bote - brazos) * k)], fill=piel, width=max(1, int(5 * k)))
-    return img
+    """Balladora con rebosillo, cosset y faldilla de vuelo; castanyoles. fase 0..3.
+    Dibujo en modulos/sprite_colla.py."""
+    return _sprite_colla.dibujar_payesa_baila(k, fase, suavizado=2)
 
 
 def dibujar_payes_dret(k, balanceo=0):

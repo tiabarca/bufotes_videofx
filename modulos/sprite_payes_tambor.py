@@ -48,10 +48,10 @@ CUERDA = (240, 236, 220)
 
 
 class _Lienzo:
-    def __init__(self, escala, suavizado):
+    def __init__(self, escala, suavizado, ancho=ANCHO, alto=ALTO):
         self.ss = suavizado
         self.k = escala * suavizado
-        self.img = Image.new("RGBA", (int(ANCHO * self.k), int(ALTO * self.k)), (0, 0, 0, 0))
+        self.img = Image.new("RGBA", (int(ancho * self.k), int(alto * self.k)), (0, 0, 0, 0))
         self.d = ImageDraw.Draw(self.img)
         self.dx, self.dy = 0.0, 0.0  # desplazamiento del torso (el encogimiento del golpe)
 
@@ -131,19 +131,41 @@ def _tambori(lz, cx, cy, inclina=0.0):
     lz.elipse(*r(-4, -1), 3.5, 1.2, (246, 238, 220), outline=None)  # brillo del parche
 
 
-def dibujar(escala, fase=0, golpe=False, suavizado=4):
+def dibujar(escala, fase=0, golpe=False, suavizado=4, paso=None, armilla=None, faixa=None):
+    """
+    paso: 0..3 para que camine (lo usa la colla de xeremiers); None = plantado.
+    armilla / faixa: colores alternativos de la ropa, para distinguirlo de otros músicos.
+    """
+    global ARMILLA, ARMILLA_LUZ, FAIXA
+    guardado = (ARMILLA, ARMILLA_LUZ, FAIXA)
+    if armilla:
+        ARMILLA = armilla
+        ARMILLA_LUZ = tuple(min(255, c + 24) for c in armilla)
+    if faixa:
+        FAIXA = faixa
+    try:
+        return _dibujar(escala, fase, golpe, suavizado, paso)
+    finally:
+        ARMILLA, ARMILLA_LUZ, FAIXA = guardado
+
+
+def _dibujar(escala, fase, golpe, suavizado, paso):
     lz = _Lienzo(escala, suavizado)
     arriba = fase % 2 == 0
     sube = 4 if golpe else 0        # el cuerpo da un respingo
     dy = -sube
 
-    # --- piernas: calces blancas, espardenyes con cintas
-    for x in (40, 58):
-        lz.poli([(x - 5, 108), (x + 5, 108), (x + 4, 122), (x - 4, 122)], CALCES)
+    # --- piernas: calces blancas, espardenyes con cintas (al caminar se abren alternando)
+    osc = [0, 7, 0, -7][paso % 4] if paso is not None else 0
+    for x, sig in ((40, 1), (58, -1)):
+        pie = x + osc * sig
+        lz.poli([(x - 5, 108), (x + 5, 108), (pie + 4, 122), (pie - 4, 122)], CALCES)
         for yy in (113, 117):
-            lz.linea([(x - 4.5, yy), (x + 4.5, yy + 2)], CINTA, 0.8)
-        lz.elipse(x + 1, 125, 7, 3.5, ESPARDENYA)
-        lz.linea([(x - 4, 123), (x + 3, 121)], CINTA, 1.0)
+            m = (yy - 108) / 14
+            xm = x + (pie - x) * m
+            lz.linea([(xm - 4.5, yy), (xm + 4.5, yy + 2)], CINTA, 0.8)
+        lz.elipse(pie + 1, 125, 7, 3.5, ESPARDENYA)
+        lz.linea([(pie - 4, 123), (pie + 3, 121)], CINTA, 1.0)
     # calçons de bufa (anchos, recogidos bajo la rodilla)
     lz.poli([(32, 88 + dy), (68, 88 + dy), (70, 102), (64, 110), (52, 108), (49, 100), (46, 108),
              (34, 110), (29, 102)], CALCONS)
