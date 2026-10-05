@@ -31,6 +31,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from .escena import X_RANAS, Y_CAMI, Y_FRENTE
 from . import sprite_cabra as _sprite_cabra
+from . import sprite_payes_tambor as _sprite_payes
 from .eventos import SS, TIPOS, Evento, EventoDeCruce, _marcos, _reducir
 
 
@@ -823,39 +824,11 @@ def _estallido(d, cx, cy, k, color=(255, 246, 200), n=7, r0=5, r1=24, ancho=3):
 
 
 def dibujar_payes_tambor(k, fase, golpe=False):
-    """Payès de pie tocando un tamborí a toda prisa (redoble). fase par/impar alterna las baquetas.
-    golpe=True: justo cuando la cabra conecta la coz, el tamborí sale despedido de sitio y
-    chispea, para que el golpe se note sin ambigüedad."""
-    w, h = int(100 * k), int(130 * k)
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    piel, camisa, pantalon, oscuro = (228, 182, 150), (150, 70, 60), (90, 80, 70), (40, 36, 40)
-    madera, parche = (120, 85, 55), (225, 215, 195)
-
-    def E(x0, y0, x1, y1, **kw):
-        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
-
-    def R(x0, y0, x1, y1, **kw):
-        d.rectangle([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
-
-    R(34, 78, 46, 118, fill=pantalon)  # piernas firmes, plantado
-    R(54, 78, 66, 118, fill=pantalon)
-    tambaleo = 6 if golpe else 0  # el torso se echa hacia delante con el golpe
-    R(22, 42 + tambaleo, 78, 82 + tambaleo, fill=camisa)
-    E(26, 10 + tambaleo, 60, 44 + tambaleo, fill=piel)
-    d.chord([22 * k, (2 + tambaleo) * k, 64 * k, (26 + tambaleo) * k], 180, 360, fill=(90, 80, 70))  # gorra
-
-    # tamborí: de golpe se desplaza y se ladea, para que se vea que ha recibido la coz
-    px0, py0, px1, py1 = (62, 50, 96, 76) if golpe else (56, 56, 90, 82)
-    E(px0, py0, px1, py1, fill=parche, outline=oscuro, width=max(1, int(2 * k)))
-    if golpe:
-        _estallido(d, (px0 + px1) / 2, (py0 + py1) / 2, k)
-    arriba = fase % 2 == 0  # las baquetas alternan muy rápido: el redoble
-    by1, by2 = (40, 58) if arriba else (58, 40)
-    d.line([(78 * k, 46 * k), (84 * k, by1 * k)], fill=madera, width=max(1, int(2.5 * k)))
-    d.line([(66 * k, 46 * k), (60 * k, by2 * k)], fill=madera, width=max(1, int(2.5 * k)))
-    d.line([(22 * k, 50 * k), (14 * k, 60 * k)], fill=piel, width=max(1, int(5 * k)))  # brazo que sujeta
-    return img
+    """Flabioler con ropa de pagès tocando flabiol y tamborí (ver modulos/sprite_payes_tambor.py).
+    fase par/impar: baqueta arriba/abajo (el redoble). golpe=True: el instante de la coz,
+    con el tamborí despedido y chispeando y el músico dando un respingo.
+    El tamborí queda a la derecha del dibujo; Cabra lo espeja si la cabra viene por la izquierda."""
+    return _sprite_payes.dibujar(k, fase, golpe, suavizado=2)
 
 
 def dibujar_cabra(k, fase=0.0, impacto=False):
@@ -891,8 +864,10 @@ class Cabra(Asoma):
 
     def dibujar(self):
         k = SS * (1.1 + 0.4 * self.velocidad / 127) * self.escala
-        self.payes = [_reducir(dibujar_payes_tambor(k, f)) for f in range(2)]
-        self.payes_golpe = [_reducir(dibujar_payes_tambor(k, f, golpe=True)) for f in range(2)]
+        # con --assets: sprites_editables/eventos/payes_tambor_0..1.png y payes_tambor_golpe_0..1.png
+        self.payes = _marcos(self.assets, "payes_tambor", dibujar_payes_tambor, k, [0, 1])
+        self.payes_golpe = _marcos(self.assets, "payes_tambor_golpe",
+                                   lambda k_, f_: dibujar_payes_tambor(k_, f_, golpe=True), k, [0, 1])
         kc = k * 1.0  # la cabra nueva deja sitio a la coz en el lienzo: algo más grande para compensar
         # False/True de espejado puro (sin dir): mira a la derecha / a la izquierda
         # con --assets se usan sprites_editables/eventos/cabra_*.png y cabra_coz_0.png
@@ -909,6 +884,9 @@ class Cabra(Asoma):
         self.ancho_cabra = self.cabra[(0.0, False, False)].width
         self.cx = self.rng.choice((0.4, 0.6)) * self.W  # entre las dos ranas, lejos de los micros
         self.lado = self.rng.choice((1, -1))  # 1: entra por la izquierda
+        if self.lado == 1:  # el tamborí tiene que quedar del lado por el que llega la cabra
+            self.payes = [im.transpose(Image.FLIP_LEFT_RIGHT) for im in self.payes]
+            self.payes_golpe = [im.transpose(Image.FLIP_LEFT_RIGHT) for im in self.payes_golpe]
         # al entrar mira hacia el payès (hacia la derecha si viene de la izquierda);
         # para que la coz conecte de verdad tiene que golpear de espaldas, así que
         # antes de cocear se para y se gira bien visiblemente (un par de fotogramas
