@@ -18,6 +18,7 @@ import random
 
 from PIL import Image, ImageDraw
 
+from . import sprite_campo as _sprite_campo
 from . import sprite_colla as _sprite_colla
 
 from .escena import X_RANAS, Y_CAMI, Y_FRENTE
@@ -114,66 +115,15 @@ def dibujar_humo(k, edad):
 
 
 def dibujar_cerdo_corriendo(k, paso):
-    """Porc negre corriendo despavorido, de perfil, con las patas muy abiertas. paso 0..3. Mira a la derecha."""
-    w, h = int(150 * k), int(100 * k)
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    negro, gris, rosa = (38, 34, 38), (70, 64, 70), (150, 110, 120)
-
-    def E(x0, y0, x1, y1, **kw):
-        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
-
-    osc = [0, 14, 0, -14][paso % 4]
-    for i, (px, fase) in enumerate(((35, 1), (55, -1), (95, -1), (115, 1))):
-        dx = osc * fase
-        d.polygon([((px - 6) * k, 60 * k), ((px + 6) * k, 60 * k), ((px + 5 + dx) * k, 92 * k),
-                   ((px - 5 + dx) * k, 92 * k)], fill=negro if i % 2 else gris)
-    bote = [0, -3, 0, -1][paso % 4]  # el tren delantero también bota al galopar, si no queda tieso
-    flap = [0, -6, -2, 3][paso % 4]  # la oreja ondea aparte, con su propio vaivén
-    d.arc([10 * k, (20 + bote) * k, 32 * k, (42 + bote) * k], 60, 380, fill=negro,
-          width=max(1, int(4 * k)))  # cola tiesa del susto
-    E(18, 10 + bote, 132, 72 + bote, fill=negro)  # cuerpo estirado al galope
-    E(115, 2 + bote, 148, 42 + bote, fill=negro)  # cabeza
-    d.polygon([(122 * k, (6 + bote) * k), (130 * k, (-10 + bote + flap) * k),
-               (138 * k, (8 + bote) * k)], fill=gris)  # oreja
-    E(134, 16 + bote, 150, 32 + bote, fill=rosa)  # hocico
-    E(128, 10 + bote, 134, 16 + bote, fill=(250, 250, 250))  # ojo muy abierto, del susto
-    E(130, 11 + bote, 133, 14 + bote, fill=(10, 10, 10))
-    return img
+    """Porc negre huyendo al galope, de perfil. paso 0..3. Mira a la derecha.
+    Dibujo en modulos/sprite_campo.py."""
+    return _sprite_campo.cerdo_corriendo(k, paso, suavizado=2)
 
 
 def dibujar_payes(k, paso, arma):
-    """Payés corriendo con un cuchillo o una olla en alto. paso 0..3 anima las piernas. Mira a la derecha."""
-    w, h = int(100 * k), int(130 * k)
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    piel, camisa, oscuro = (228, 182, 150), (205, 65, 55), (40, 36, 40)
-
-    def E(x0, y0, x1, y1, **kw):
-        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
-
-    def R(x0, y0, x1, y1, **kw):
-        d.rectangle([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
-
-    osc = [0, 16, 0, -16][paso % 4]
-    for px, fase in ((30, 1), (50, -1)):  # piernas a la carrera
-        dx = osc * fase
-        d.polygon([((px - 6) * k, 78 * k), ((px + 6) * k, 78 * k), ((px + 4 + dx) * k, 120 * k),
-                   ((px - 8 + dx) * k, 120 * k)], fill=oscuro)
-    R(18, 40, 62, 82, fill=camisa)  # cuerpo
-    d.line([(20 * k, 50 * k), (4 * k, 32 * k)], fill=piel, width=max(1, int(6 * k)))  # brazo de atrás
-    E(24, 10, 58, 44, fill=piel)  # cabeza
-    d.chord([20 * k, 2 * k, 62 * k, 26 * k], 180, 360, fill=(90, 80, 70))  # gorra de pagès
-
-    sube = 10 if paso % 2 == 0 else 2  # el brazo del arma sube y baja al correr
-    d.line([(58 * k, 46 * k), (80 * k, (24 - sube) * k)], fill=piel, width=max(1, int(7 * k)))
-    if arma == "cuchillo":
-        d.polygon([(76 * k, (20 - sube) * k), (94 * k, (6 - sube) * k), (82 * k, (26 - sube) * k)],
-                   fill=(215, 215, 220), outline=oscuro)
-    else:  # olla, a modo de instrumento de percusión improvisado
-        E(68, 6 - sube, 94, 26 - sube, fill=(120, 120, 128), outline=oscuro, width=max(1, int(2 * k)))
-        R(74, 0 - sube, 88, 8 - sube, fill=(95, 95, 102))
-    return img
+    """Perseguidor del porc: "cuchillo" = pagès gritando; "olla" = payesa aporreando una olla. paso 0..3.
+    Dibujo en modulos/sprite_campo.py."""
+    return _sprite_campo.payes_corre(k, paso, arma, suavizado=2)
 
 
 def dibujar_pajaro(k, ala):
@@ -238,41 +188,15 @@ def dibujar_mosquito(k, fase):
 
 
 def dibujar_oveja(k, pasto=0.0):
-    """Oveja de perfil, lanuda. pasto 0..1 agacha la cabeza a pastar. Mira a la derecha."""
-    w, h = int(90 * k), int(68 * k)
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    lana, sombra, negro = (248, 246, 240), (220, 216, 206), (45, 42, 40)
-
-    def E(x0, y0, x1, y1, **kw):
-        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
-
-    for px in (22, 34, 56, 68):  # patas
-        d.rectangle([(px - 3) * k, 46 * k, (px + 3) * k, 64 * k], fill=negro)
-    for cx, cy, r in ((44, 34, 22), (26, 36, 15), (60, 36, 15), (36, 24, 13), (52, 24, 13)):  # lana a bultos
-        E(cx - r, cy - r * 0.85, cx + r, cy + r * 0.85, fill=lana, outline=sombra, width=max(1, int(k)))
-    dy = 14 * pasto  # la cabeza se agacha al pastar
-    E(70, 20 + dy, 88, 38 + dy, fill=negro)
-    E(73, 25 + dy, 77, 29 + dy, fill=(95, 90, 86))
-    return img
+    """Ovella mallorquina de perfil. pasto 0..1 agacha la cabeza a pastar. Mira a la derecha.
+    Dibujo en modulos/sprite_campo.py."""
+    return _sprite_campo.oveja(k, pasto, suavizado=2)
 
 
 def dibujar_perro(k, paso=0):
-    """Perro pastor corriendo tras el rebaño. paso 0..3 anima las patas. Mira a la derecha."""
-    w, h = int(100 * k), int(76 * k)
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    pelo, oscuro = (122, 92, 56), (72, 52, 32)
-    osc = [0, 9, 0, -9][paso % 4]
-    for px, fase in ((20, 1), (35, -1), (62, -1), (77, 1)):
-        dx = osc * fase
-        d.line([(px * k, 46 * k), ((px + dx) * k, 68 * k)], fill=oscuro, width=max(1, int(5 * k)))
-    d.polygon([(8 * k, 28 * k), (20 * k, 14 * k), (24 * k, 32 * k)], fill=oscuro)  # cola
-    d.ellipse([16 * k, 20 * k, 76 * k, 52 * k], fill=pelo, outline=oscuro, width=max(1, int(2 * k)))  # cuerpo
-    d.ellipse([70 * k, 12 * k, 96 * k, 36 * k], fill=pelo, outline=oscuro, width=max(1, int(2 * k)))  # cabeza
-    d.polygon([(78 * k, 10 * k), (82 * k, -2 * k), (88 * k, 12 * k)], fill=oscuro)  # oreja
-    d.ellipse([90 * k, 20 * k, 96 * k, 26 * k], fill=(30, 25, 20))  # morro
-    return img
+    """Ca de bestiar corriendo tras el rebaño. paso 0..3 anima las patas. Mira a la derecha.
+    Dibujo en modulos/sprite_campo.py."""
+    return _sprite_campo.perro(k, paso, suavizado=2)
 
 
 def dibujar_xeremier(k, paso):
@@ -300,45 +224,15 @@ def dibujar_payesa_baila(k, fase):
 
 
 def dibujar_payes_dret(k, balanceo=0):
-    """Payés de pie y quieto (con un ligero balanceo), plantado delante de la puerta."""
-    w, h = int(70 * k), int(120 * k)
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    piel, camisa, pantalon, oscuro = (228, 182, 150), (70, 120, 160), (90, 80, 70), (40, 36, 40)
-
-    def E(x0, y0, x1, y1, **kw):
-        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
-
-    d.polygon([(26 * k, 70 * k), (32 * k, 70 * k), (30 * k + balanceo, 110 * k), (22 * k + balanceo, 110 * k)],
-              fill=pantalon)
-    d.polygon([(38 * k, 70 * k), (44 * k, 70 * k), (48 * k - balanceo, 110 * k), (40 * k - balanceo, 110 * k)],
-              fill=pantalon)
-    d.rectangle([18 * k, 32 * k, 52 * k, 72 * k], fill=camisa)
-    E(22, 2, 50, 30, fill=piel)
-    d.chord([18 * k, -6 * k, 54 * k, 14 * k], 180, 360, fill=(90, 80, 70))  # gorra
-    d.line([(18 * k, 40 * k), (8 * k, 56 * k)], fill=piel, width=max(1, int(5 * k)))  # brazos
-    d.line([(52 * k, 40 * k), (62 * k, 56 * k)], fill=piel, width=max(1, int(5 * k)))
-    return img
+    """Pagès plantado delante de la puerta mientras le riñen (ligero balanceo).
+    Dibujo en modulos/sprite_campo.py."""
+    return _sprite_campo.payes_dret(k, balanceo, suavizado=2)
 
 
 def dibujar_payesa_ventana(k, agita):
-    """Payesa asomada a una ventana, amenazando con un palo. agita 0..1: el palo se mueve de lado a lado."""
-    w, h = int(80 * k), int(70 * k)
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    piel, blusa, panuelo, palo = (228, 182, 150), (250, 248, 240), (210, 70, 90), (110, 80, 55)
-
-    def E(x0, y0, x1, y1, **kw):
-        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
-
-    d.rectangle([14 * k, 30 * k, 56 * k, 70 * k], fill=blusa)  # torso asomado
-    E(18, 4, 48, 34, fill=piel)
-    d.chord([14 * k, -4 * k, 52 * k, 18 * k], 180, 360, fill=panuelo)
-    ang = math.radians(-35 + agita * 55)  # el palo se agita de lado a lado
-    ex, ey = 50 * k + math.cos(ang) * 28 * k, 20 * k + math.sin(ang) * 28 * k
-    d.line([(48 * k, 26 * k), (ex, ey)], fill=palo, width=max(1, int(4 * k)))
-    d.line([(48 * k, 26 * k), (56 * k, 36 * k)], fill=piel, width=max(1, int(5 * k)))  # brazo sujetando
-    return img
+    """Payesa asomada a la ventana, agitando la escoba. agita 0..1.
+    Dibujo en modulos/sprite_campo.py."""
+    return _sprite_campo.payesa_ventana(k, agita, suavizado=2)
 
 
 # ----------------------------------------------------------------------------

@@ -31,6 +31,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from .escena import X_RANAS, Y_CAMI, Y_FRENTE
 from . import sprite_cabra as _sprite_cabra
+from . import sprite_campo as _sprite_campo
 from . import sprite_payes_tambor as _sprite_payes
 from .eventos import SS, TIPOS, Evento, EventoDeCruce, _marcos, _reducir
 
@@ -645,47 +646,9 @@ class Asnos(Asoma):
 # ============================================================================
 
 def dibujar_motocultor(k, fase, paso):
-    """Motocultor con pagès caminando detrás. Mira a la derecha. fase 0..1 gira las cuchillas."""
-    w, h = int(240 * k), int(190 * k)
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-
-    def R(x0, y0, x1, y1, **kw):
-        d.rectangle([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
-
-    def E(x0, y0, x1, y1, **kw):
-        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
-
-    def L(pts, ancho, c):
-        d.line([(x * k, y * k) for x, y in pts], fill=c, width=max(1, int(ancho * k)), joint="curve")
-
-    # pagès (detrás, a la izquierda)
-    zanc = 14 * math.sin(paso * math.pi / 2)
-    L([(46, 130), (46 + zanc, 182)], 8, (60, 70, 110))
-    L([(46, 130), (46 - zanc, 182)], 8, (50, 60, 100))
-    R(34, 82, 60, 132, fill=(110, 140, 90))                     # camisa
-    E(36, 52, 62, 80, fill=(236, 190, 160))                     # cara
-    d.chord([30 * k, 36 * k, 70 * k, 70 * k], 180, 360, fill=(200, 180, 120))  # sombrero de paja
-    R(26, 52, 76, 56, fill=(200, 180, 120))
-    E(53, 62, 57, 66, fill=(20, 20, 20))
-    L([(56, 96), (96, 104)], 6, (236, 190, 160))                # brazos al manillar
-    # manillares
-    L([(92, 98), (150, 138)], 6, (60, 60, 64))
-    L([(96, 106), (150, 142)], 5, (70, 70, 74))
-    # motor
-    R(140, 106, 200, 148, fill=(214, 120, 30), outline=(150, 80, 20), width=max(1, int(3 * k)))
-    R(150, 92, 176, 108, fill=(80, 80, 84))                      # depósito
-    R(178, 80, 186, 108, fill=(70, 66, 64))                      # escape
-    E(150, 116, 166, 132, fill=(50, 50, 54))
-    # rueda y cuchillas giratorias
-    E(140, 140, 184, 184, fill=(34, 32, 32))
-    E(152, 152, 172, 172, fill=(180, 180, 180))
-    cx, cy, r = 212, 166, 22
-    for i in range(6):
-        a = 2 * math.pi * (i / 6 + fase / 6)
-        L([(cx, cy), (cx + math.cos(a) * r, cy + math.sin(a) * r)], 5, (150, 150, 156))
-    E(cx - 6, cy - 6, cx + 6, cy + 6, fill=(90, 90, 94))
-    return img
+    """Motocultor viejo con pagès de capell de palla caminando detrás. Mira a la derecha.
+    fase 0..1 gira la fresa y la rueda; paso 0..3 las piernas. Dibujo en modulos/sprite_campo.py."""
+    return _sprite_campo.motocultor(k, fase, paso, suavizado=2)
 
 
 class Motocultor(EventoDeCruce):

@@ -88,7 +88,8 @@ def _torso_payes(lz, cx, arriba, cintura, armilla, faixa, ancho=22):
              (cx + ancho - 6, cintura + 13)], faixa)
 
 
-def _cara(lz, cx, cy, ojos="abiertos", bigote=True, boca="sonrisa", mofletes=False, mujer=False):
+def _cara(lz, cx, cy, ojos="abiertos", bigote=True, boca="sonrisa", mofletes=False, mujer=False, cejas=None):
+    """boca: "sonrisa", "grito" (abierta), "morros" (enfurruñado) o None. cejas: None o "enfado"."""
     lz.elipse(cx, cy, 12, 13, PIEL)
     if not mujer:
         lz.elipse(cx - 12.5, cy + 1, 2.6, 3.6, PIEL_SOMBRA, ancho=1.0)
@@ -107,6 +108,14 @@ def _cara(lz, cx, cy, ojos="abiertos", bigote=True, boca="sonrisa", mofletes=Fal
     if bigote:
         lz.poli(_curva((cx - 8, cy + 9), (cx, cy + 5), (cx + 8, cy + 9), 8) +
                 _curva((cx + 6, cy + 11), (cx, cy + 8.5), (cx - 6, cy + 11), 8), BIGOTE, ancho=1.0)
+    if cejas == "enfado":
+        lz.linea([(cx - 9, cy - 6), (cx - 2, cy - 3.5)], LINEA, 1.5)
+        lz.linea([(cx + 3, cy - 3.5), (cx + 10, cy - 6)], LINEA, 1.5)
+    if boca == "grito":
+        lz.elipse(cx + 1, cy + (10 if mujer else 12.5), 3.6, 3.0, (110, 30, 40), ancho=1.0)
+        lz.elipse(cx + 1, cy + (11.5 if mujer else 14), 2.0, 1.0, (220, 110, 120), outline=None)
+    elif boca == "morros":
+        lz.linea(_curva((cx - 3, cy + 13), (cx + 1, cy + 11), (cx + 5, cy + 13), 4), LINEA, 1.2)
     if boca == "sonrisa":
         lz.linea(_curva((cx - 4, cy + 10 + (0 if mujer else 2)), (cx, cy + 13.5 + (0 if mujer else 2)),
                         (cx + 4, cy + 10 + (0 if mujer else 2)), 6), (150, 50, 60) if mujer else LINEA, 1.2)
