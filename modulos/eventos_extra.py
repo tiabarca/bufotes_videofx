@@ -30,7 +30,8 @@ import random
 from PIL import Image, ImageDraw, ImageFont
 
 from .escena import X_RANAS, Y_CAMI, Y_FRENTE
-from .eventos import SS, TIPOS, Evento, EventoDeCruce, _reducir
+from . import sprite_cabra as _sprite_cabra
+from .eventos import SS, TIPOS, Evento, EventoDeCruce, _marcos, _reducir
 
 
 def dibujar_cabeza_cerdo(k, ojos_abiertos=True, hocico=0.0, orejas=0.0):
@@ -812,8 +813,19 @@ class Bombilla(Asoma):
 # Cabra: redoble de tambor y una coz
 # ============================================================================
 
-def dibujar_payes_tambor(k, fase):
-    """Payès de pie tocando un tamborí a toda prisa (redoble). fase par/impar alterna las baquetas."""
+def _estallido(d, cx, cy, k, color=(255, 246, 200), n=7, r0=5, r1=24, ancho=3):
+    """Rayas cortas que irradian desde (cx, cy): marca de impacto, bien visible."""
+    for i in range(n):
+        ang = math.radians(i * (360 / n) + 11)
+        x0, y0 = cx + math.cos(ang) * r0, cy + math.sin(ang) * r0
+        x1, y1 = cx + math.cos(ang) * r1, cy + math.sin(ang) * r1
+        d.line([(x0 * k, y0 * k), (x1 * k, y1 * k)], fill=color, width=max(1, int(ancho * k)))
+
+
+def dibujar_payes_tambor(k, fase, golpe=False):
+    """Payès de pie tocando un tamborí a toda prisa (redoble). fase par/impar alterna las baquetas.
+    golpe=True: justo cuando la cabra conecta la coz, el tamborí sale despedido de sitio y
+    chispea, para que el golpe se note sin ambigüedad."""
     w, h = int(100 * k), int(130 * k)
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -828,11 +840,16 @@ def dibujar_payes_tambor(k, fase):
 
     R(34, 78, 46, 118, fill=pantalon)  # piernas firmes, plantado
     R(54, 78, 66, 118, fill=pantalon)
-    R(22, 42, 78, 82, fill=camisa)
-    E(26, 10, 60, 44, fill=piel)
-    d.chord([22 * k, 2 * k, 64 * k, 26 * k], 180, 360, fill=(90, 80, 70))  # gorra
+    tambaleo = 6 if golpe else 0  # el torso se echa hacia delante con el golpe
+    R(22, 42 + tambaleo, 78, 82 + tambaleo, fill=camisa)
+    E(26, 10 + tambaleo, 60, 44 + tambaleo, fill=piel)
+    d.chord([22 * k, (2 + tambaleo) * k, 64 * k, (26 + tambaleo) * k], 180, 360, fill=(90, 80, 70))  # gorra
 
-    E(56, 56, 90, 82, fill=parche, outline=oscuro, width=max(1, int(2 * k)))  # tamborí a la cintura
+    # tamborí: de golpe se desplaza y se ladea, para que se vea que ha recibido la coz
+    px0, py0, px1, py1 = (62, 50, 96, 76) if golpe else (56, 56, 90, 82)
+    E(px0, py0, px1, py1, fill=parche, outline=oscuro, width=max(1, int(2 * k)))
+    if golpe:
+        _estallido(d, (px0 + px1) / 2, (py0 + py1) / 2, k)
     arriba = fase % 2 == 0  # las baquetas alternan muy rápido: el redoble
     by1, by2 = (40, 58) if arriba else (58, 40)
     d.line([(78 * k, 46 * k), (84 * k, by1 * k)], fill=madera, width=max(1, int(2.5 * k)))
@@ -841,45 +858,33 @@ def dibujar_payes_tambor(k, fase):
     return img
 
 
-def dibujar_cabra(k, coz=False):
+def dibujar_cabra(k, fase=0.0, impacto=False):
     """
-    Cabra de perfil, mirando a la derecha. Las patas traseras están junto a
-    la cola (izquierda); coz=True las estira hacia atrás y arriba, en pleno
-    golpe, por delante del cuerpo.
+    Cabra mallorquina de perfil, mirando a la derecha (ver modulos/sprite_cabra.py).
+    fase 0: de pie, las cuatro patas en el suelo. Hacia 1, el cuerpo bascula sobre
+    las delanteras y las traseras salen disparadas hacia atrás, a la altura del
+    tamborí. impacto=True añade el estallido en las pezuñas.
+    k ya incluye el supersampling (SS) del resto de eventos, así que basta con
+    suavizar un poco más.
     """
-    w, h = int(110 * k), int(90 * k)
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    pelo, osc, cuerno = (225, 220, 205), (195, 188, 170), (235, 228, 210)
+    return _sprite_cabra.dibujar(k, fase, impacto, suavizado=2)
 
-    def E(x0, y0, x1, y1, **kw):
-        d.ellipse([x0 * k, y0 * k, x1 * k, y1 * k], **kw)
 
-    def L(pts, ancho, c):
-        d.line([(x * k, (y + 20) * k) for x, y in pts], fill=c, width=max(1, int(ancho * k)), joint="curve")
+_PASOS_COZ = (0.0, 0.25, 0.5, 0.7, 0.85, 1.0)  # fases cacheadas de la coz (sin repintar cada fotograma)
 
-    L([(66, 48), (64, 74)], 7, osc)  # patas delanteras (junto a la cabeza), siempre apoyadas
-    L([(74, 50), (76, 74)], 7, osc)
-    if not coz:
-        L([(30, 48), (28, 74)], 7, osc)  # traseras (junto a la cola) apoyadas
-        L([(42, 50), (40, 74)], 7, osc)
-    E(14, 40, 90, 80, fill=pelo, outline=osc, width=max(1, int(2 * k)))  # cuerpo
-    E(82, 28, 110, 62, fill=pelo, outline=osc, width=max(1, int(2 * k)))  # cabeza
-    d.line([(90 * k, 30 * k), (100 * k, 14 * k)], fill=cuerno, width=max(1, int(3 * k)))
-    d.line([(98 * k, 30 * k), (108 * k, 16 * k)], fill=cuerno, width=max(1, int(3 * k)))
-    E(100, 40, 108, 46, fill=(45, 40, 38))  # ojo
-    d.polygon([(16 * k, 52 * k), (2 * k, 46 * k), (4 * k, 60 * k)], fill=pelo, outline=osc)  # cola
-    if coz:  # traseras estiradas hacia atrás y arriba, por delante del cuerpo
-        L([(30, 46), (2, 24)], 7, osc)
-        L([(40, 50), (8, 32)], 7, osc)
-    return img
+
+def _paso_coz(fase):
+    return min(_PASOS_COZ, key=lambda p: abs(p - fase))
 
 
 class Cabra(Asoma):
     """
     Un payès se queda junto a la orilla tocando el tamborí sin parar (el
-    redoble); a media nota, una cabra entra corriendo desde un lado, le da
-    una coz y se esconde otra vez por donde ha venido.
+    redoble); a media nota, una cabra entra corriendo desde un lado, se para,
+    se da la vuelta bien visiblemente y le suelta una coz con las patas
+    traseras al tamborí (con estallido en la pata y en el tamborí, y este
+    saliendo despedido, para que el golpe sea inconfundible), y se esconde
+    otra vez por donde ha venido.
     """
     SUBIR, BAJAR, MIN_ARRIBA, POR_DEFECTO = 0.4, 0.4, 1.8, 2.5
     AJUSTA_CENIT = True  # por MIDI, la nota marca la coz, no cuando empieza a subir el payès
@@ -887,56 +892,97 @@ class Cabra(Asoma):
     def dibujar(self):
         k = SS * (1.1 + 0.4 * self.velocidad / 127) * self.escala
         self.payes = [_reducir(dibujar_payes_tambor(k, f)) for f in range(2)]
-        kc = k * 0.8
+        self.payes_golpe = [_reducir(dibujar_payes_tambor(k, f, golpe=True)) for f in range(2)]
+        kc = k * 1.0  # la cabra nueva deja sitio a la coz en el lienzo: algo más grande para compensar
         # False/True de espejado puro (sin dir): mira a la derecha / a la izquierda
+        # con --assets se usan sprites_editables/eventos/cabra_*.png y cabra_coz_0.png
+        # si existen (ver crear_sprites_cabra.py); si no, el dibujo por código
         self.cabra = {}
-        for coz in (False, True):
-            im = _reducir(dibujar_cabra(kc, coz))
-            self.cabra[(coz, False)] = im
-            self.cabra[(coz, True)] = im.transpose(Image.FLIP_LEFT_RIGHT)
+        pasos = _marcos(self.assets, "cabra", dibujar_cabra, kc, list(_PASOS_COZ))
+        for fase, im in zip(_PASOS_COZ, pasos):
+            self.cabra[(fase, False, False)] = im
+            self.cabra[(fase, False, True)] = im.transpose(Image.FLIP_LEFT_RIGHT)
+        imp = _marcos(self.assets, "cabra_coz", lambda k_, _p: dibujar_cabra(k_, 1.0, impacto=True), kc, [1.0])[0]
+        self.cabra[(1.0, True, False)] = imp
+        self.cabra[(1.0, True, True)] = imp.transpose(Image.FLIP_LEFT_RIGHT)
         self.ancho_payes, self.alto = self.payes[0].size
-        self.ancho_cabra = self.cabra[(False, False)].width
+        self.ancho_cabra = self.cabra[(0.0, False, False)].width
         self.cx = self.rng.choice((0.4, 0.6)) * self.W  # entre las dos ranas, lejos de los micros
         self.lado = self.rng.choice((1, -1))  # 1: entra por la izquierda
         # al entrar mira hacia el payès (hacia la derecha si viene de la izquierda);
         # para que la coz conecte de verdad tiene que golpear de espaldas, así que
-        # justo al cocear (y al volver) se da la vuelta y queda mirando para el otro lado
+        # antes de cocear se para y se gira bien visiblemente (un par de fotogramas
+        # de perfil "de canto", como un giro de dibujo animado) y queda mirando
+        # para el otro lado
         self.mira_al_entrar = self.lado == -1
         n = self.n_arriba
         self.dur_dash = max(6, int(0.5 * self.fps))
-        self.dur_coz = max(5, int(0.35 * self.fps))
+        self.dur_gira = max(4, int(0.18 * self.fps))
+        self.dur_kick = max(10, int(0.55 * self.fps))
         self.t_entra_cabra = max(0, int(n * 0.3))
-        self.t_coz = self.t_entra_cabra + self.dur_dash
-        self.t_vuelve = self.t_coz + self.dur_coz
+        self.t_llega = self.t_entra_cabra + self.dur_dash
+        self.t_gira_fin = self.t_llega + self.dur_gira
+        self.t_vuelve = self.t_gira_fin + self.dur_kick
         self.t_sale_cabra = self.t_vuelve + self.dur_dash
+        # ventana de impacto dentro de la coz: un hueco claro donde se queda en
+        # pleno golpe (con estallido), ni un instante suelto ni demasiado largo
+        self.p_windup, self.p_impacto = 0.45, 0.68
         self.x_lejos = -self.ancho_cabra if self.lado == 1 else self.W + self.ancho_cabra
         self.x_contacto = self.cx - self.lado * (self.ancho_payes * 0.5 + self.ancho_cabra * 0.25)
 
     def _cabra_estado(self, ta):
-        """(x, en_pleno_golpe, mirar_espejado) de la cabra durante su visita, o None si no está en pantalla."""
+        """(x, fase 0..1, impacto, espejo, ancho_rel) de la cabra, o None si no está en pantalla.
+        ancho_rel < 1 durante el giro: se encoge de lado para simular el cambio de cara."""
         if ta < self.t_entra_cabra or ta >= self.t_sale_cabra:
             return None
-        if ta < self.t_coz:
+        if ta < self.t_llega:  # dash de entrada, mirando al payès
             p = (ta - self.t_entra_cabra) / self.dur_dash
             x = self.x_lejos + p * (self.x_contacto - self.x_lejos)
-            return x, False, self.mira_al_entrar
-        if ta < self.t_vuelve:
-            return self.x_contacto, True, not self.mira_al_entrar
-        p = (ta - self.t_vuelve) / self.dur_dash
+            return x, 0.0, False, self.mira_al_entrar, 1.0
+        if ta < self.t_gira_fin:  # giro en el sitio: se encoge y vuelve a crecer ya del otro lado
+            p = (ta - self.t_llega) / self.dur_gira
+            mitad = 0.5
+            if p < mitad:
+                ancho_rel = max(0.1, 1.0 - p / mitad)
+                espejo = self.mira_al_entrar
+            else:
+                ancho_rel = max(0.1, (p - mitad) / (1.0 - mitad))
+                espejo = not self.mira_al_entrar
+            return self.x_contacto, 0.0, False, espejo, ancho_rel
+        if ta < self.t_vuelve:  # la coz: subida, impacto sostenido y bajada, ya de espaldas
+            p = (ta - self.t_gira_fin) / self.dur_kick
+            if p < self.p_windup:
+                fase = (p / self.p_windup) ** 0.6  # entra rápido en el golpe
+                impacto = False
+            elif p < self.p_impacto:
+                fase, impacto = 1.0, True
+            else:
+                resto = (p - self.p_impacto) / (1.0 - self.p_impacto)
+                fase = max(0.0, 1.0 - resto ** 0.6)
+                impacto = False
+            return self.x_contacto, fase, impacto, not self.mira_al_entrar, 1.0
+        p = (ta - self.t_vuelve) / self.dur_dash  # dash de salida, ya de vuelta a mirar hacia dentro
         x = self.x_contacto + p * (self.x_lejos - self.x_contacto)
-        return x, False, not self.mira_al_entrar
+        return x, 0.0, False, not self.mira_al_entrar, 1.0
 
     def sprites(self, t):
         f = self.fuera(t)
         ta = self.t_arriba(t)
-        im = self.payes[(t // 2) % 2]
-        y = int(Y_FRENTE * self.H - self.alto * f)  # de pie en el suelo, no asomando por el borde
         estado = self._cabra_estado(ta) if ta >= 0 else None
-        bote = int(6 * self.escala) if estado is not None and self.t_coz <= ta < self.t_vuelve else 0
+        en_impacto = estado is not None and estado[2]
+        payes_frames = self.payes_golpe if en_impacto else self.payes
+        im = payes_frames[(t // 2) % 2]
+        y = int(Y_FRENTE * self.H - self.alto * f)  # de pie en el suelo, no asomando por el borde
+        bote = 0
+        if estado is not None:
+            bote = int((16 if en_impacto else 6) * self.escala) if estado[1] > 0 or en_impacto else 0
         out = [(im, int(self.cx - self.ancho_payes / 2), y - bote)]
         if estado is not None:
-            x, coz, espejo = estado
-            cim = self.cabra[(coz, espejo)]
+            x, fase, impacto, espejo, ancho_rel = estado
+            cim = self.cabra[(_paso_coz(fase), impacto, espejo)]
+            if ancho_rel < 0.999:
+                w = max(1, int(cim.width * ancho_rel))
+                cim = cim.resize((w, cim.height))
             out.append((cim, int(x - cim.width / 2), int(y + self.alto - cim.height)))
         return out
 
