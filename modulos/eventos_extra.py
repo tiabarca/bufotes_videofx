@@ -6,7 +6,7 @@ Eventos extra (salen al azar y también se pueden lanzar desde MIDI):
     rana_guapa    una rana con pintalabios y pestañas sube del estanque y guiña un ojo
     pedo          una de las dos ranas (al azar) se tira un pedo; da un bote y cierra los ojos
     muchedumbre   público aplaudiendo que asoma por abajo
-    asnos         dos burros asoman por los lados y se ríen
+    asnos         dos burros asoman por los lados y se ríen a carcajadas ("JAJAJAJA!")
     motocultor    un pagès con motocultor por el camí, echando muchísimo humo
     bombilla      una bombilla baja del techo, se enciende y vuelve a subir
     cabra         un payès toca el tamborí (redoble); una cabra entra, le da una coz y se esconde
@@ -570,7 +570,7 @@ class Asnos(Asoma):
     Dos burros asoman por los lados de la pantalla y se ríen. Asoman de cuerpo
     entero desde fuera de cuadro (el corte del cuerpo coincide con el borde de
     la pantalla), plantados en el suelo detrás de las ranas: echan la cabeza
-    hacia atrás, enseñan los dientes, cierran los ojos y patalean.
+    hacia atrás, enseñan los dientes, cierran los ojos, patalean y se ríen ("JAJAJAJA!").
     """
     capa = "fondo"  # detrás de las ranas, en la orilla
     SUBIR, BAJAR, MIN_ARRIBA, POR_DEFECTO = 0.6, 0.5, 2.0, 3.0
@@ -588,7 +588,7 @@ class Asnos(Asoma):
         self.ancho = self.frames[(0, 0, 1)].width
         self.alto = self.frames[(0, 0, 1)].height
         tam = int(34 * self.escala * (0.8 + 0.4 * self.velocidad / 127))
-        self.risas = [_texto("IA-IA!", tam, (90, 60, 40), angulo=12), _texto("IIIA-OOO!", tam, (90, 60, 40), angulo=-12)]
+        self.risas = [_texto("JAJAJAJA!", tam, (90, 60, 40), angulo=12), _texto("JA JA JA JA!", tam, (90, 60, 40), angulo=-12)]
         self.y_suelo = 0.86 * self.H  # a la altura de las ranas, junto a las cañas
 
     def sprites(self, t):
