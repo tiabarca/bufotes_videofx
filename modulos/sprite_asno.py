@@ -94,6 +94,28 @@ def _curva(a, b, c, n=10):
              (1 - s) ** 2 * a[1] + 2 * (1 - s) * s * b[1] + s * s * c[1]) for s in (i / n for i in range(n + 1))]
 
 
+def _crin(lz, borde, n=10, alto=7):
+    """Crin corta y tiesa: tira de dientes de sierra pegada al borde superior del cuello.
+    borde: lista de puntos del borde, de atrás (izquierda) a la nuca."""
+    pts = []
+    tramos = list(zip(borde, borde[1:]))
+    largos = [math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in tramos]
+    total = sum(largos)
+    for i in range(n * 2 + 1):
+        d = total * i / (n * 2)
+        for (a, b), l in zip(tramos, largos):
+            if d <= l or (a, b) == tramos[-1]:
+                f = min(1.0, d / l) if l else 0
+                x, y = a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f
+                nx, ny = (b[1] - a[1]) / (l or 1), -(b[0] - a[0]) / (l or 1)  # normal hacia fuera (arriba)
+                h = alto if i % 2 else 1.5
+                pts.append((x + nx * h - 2 * (i % 2), y + ny * h))
+                break
+            d -= l
+    base = [(x, y + 3) for x, y in borde[::-1]]
+    lz.poli(pts + base, PELO_SOMBRA, ancho=1.0)
+
+
 def _pata(lz, cadera, pie, color, levanta=0.0):
     """Pata delantera: brazo ancho, rodilla y caña fina con pezuña. levanta 0..1 la dobla hacia arriba."""
     cx, cy = cadera
@@ -110,26 +132,7 @@ def _pata(lz, cadera, pie, color, levanta=0.0):
     lz.poli([r(-1, -4.2), r(5, -4.6), r(5.4, 4.2), r(-1, 4.6)], PEZUNA)
 
 
-def dibujar(escala, risa=0.0, pata=0.0, suavizado=4):
-    lz = _Lienzo(escala, suavizado)
-
-    # --- pata delantera del lado de allá
-    _pata(lz, (86, 168), (82, SUELO - 4), PELO_SOMBRA)
-
-    # --- medio cuerpo, cortado por el borde izquierdo del lienzo (fuera de cuadro)
-    lz.poli([(-4, 112)] + _curva((-4, 112), (50, 104), (96, 128), 10)[1:] + [(112, 160), (100, 188)] +
-            _curva((96, 186), (50, 196), (-4, 190), 10)[1:], PELO)
-    lz.poli(_curva((-4, 176), (40, 190), (88, 180), 10) + [(84, 188)] + _curva((80, 189), (40, 196), (-4, 189), 6),
-            CLARO, outline=None)  # barriga clara
-    lz.poli(_curva((-4, 118), (40, 110), (80, 124), 8) + [(70, 130), (-4, 128)], PELO_LUZ, outline=None)  # lomo
-
-    # --- cuello hacia arriba y delante, con la crin tiesa
-    lz.poli([(78, 130), (96, 108), (120, 80), (138, 92), (124, 132), (112, 162), (92, 158)], PELO)
-    for i in range(9):  # crin corta y tiesa, naciendo del borde superior del cuello
-        f = i / 8
-        x, y = 96 + (121 - 96) * f, 108 + (79 - 108) * f
-        lz.linea([(x + 1, y + 1), (x - 5, y - 6 - (i % 2) * 2)], PELO_SOMBRA, 2.8)
-
+def _cabeza(lz, risa):
     # --- cabeza: gira alrededor de la nuca al reír (se echa hacia atrás)
     lz.giro = (math.radians(-20 * risa), 124.0, 86.0)
     caida = 22 * risa  # orejas hacia atrás con la carcajada
@@ -183,6 +186,43 @@ def dibujar(escala, risa=0.0, pata=0.0, suavizado=4):
         lz.elipse(138.2, 63.4, 0.8, 0.8, (255, 255, 255), outline=None)
     lz.poli(_curva((120, 56), (128, 44), (138, 50), 6) + [(132, 58)], PELO_SOMBRA)  # tupé
     lz.giro = None
+
+
+CABEZA_X0, CABEZA_Y1 = 70, 150  # recorte de solo_cabeza: de x=70 a la derecha y de y=0 a 150
+
+
+def dibujar(escala, risa=0.0, pata=0.0, suavizado=4, solo_cabeza=False):
+    """
+    solo_cabeza=True: solo cabeza y un trozo de cuello, recortado a un lienzo de
+    110 x 150 unidades (x 70..180, y 0..150). El cuello llega hasta el borde izquierdo:
+    pegado al borde de la pantalla, es un burro asomando la cabeza desde fuera de cuadro.
+    """
+    lz = _Lienzo(escala, suavizado)
+    if solo_cabeza:
+        # cuello que sale de fuera de cuadro (por la izquierda) hasta la nuca
+        lz.poli([(CABEZA_X0 - 4, 104), (96, 98), (120, 80), (138, 92), (128, 124), (CABEZA_X0 - 4, 142)], PELO)
+        lz.poli([(CABEZA_X0 - 4, 132), (110, 126), (126, 118), (124, 128), (CABEZA_X0 - 4, 142)], PELO_SOMBRA,
+                outline=None)
+        _crin(lz, [(CABEZA_X0 - 4, 104), (96, 98), (121, 80)])
+        _cabeza(lz, risa)
+        img = lz.reducir()
+        return img.crop((int(CABEZA_X0 * escala), 0, img.width, int(CABEZA_Y1 * escala)))
+
+    # --- pata delantera del lado de allá
+    _pata(lz, (86, 168), (82, SUELO - 4), PELO_SOMBRA)
+
+    # --- medio cuerpo, cortado por el borde izquierdo del lienzo (fuera de cuadro)
+    lz.poli([(-4, 112)] + _curva((-4, 112), (50, 104), (96, 128), 10)[1:] + [(112, 160), (100, 188)] +
+            _curva((96, 186), (50, 196), (-4, 190), 10)[1:], PELO)
+    lz.poli(_curva((-4, 176), (40, 190), (88, 180), 10) + [(84, 188)] + _curva((80, 189), (40, 196), (-4, 189), 6),
+            CLARO, outline=None)  # barriga clara
+    lz.poli(_curva((-4, 118), (40, 110), (80, 124), 8) + [(70, 130), (-4, 128)], PELO_LUZ, outline=None)  # lomo
+
+    # --- cuello hacia arriba y delante, con la crin tiesa
+    lz.poli([(78, 130), (96, 108), (120, 80), (138, 92), (124, 132), (112, 162), (92, 158)], PELO)
+    _crin(lz, [(90, 114), (96, 108), (121, 80)], n=8)
+
+    _cabeza(lz, risa)
 
     # --- pata delantera del lado de acá (pataleo de risa)
     _pata(lz, (102, 170), (104, SUELO - 4), PELO, levanta=pata)

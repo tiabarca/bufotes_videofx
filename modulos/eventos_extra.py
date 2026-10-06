@@ -559,37 +559,37 @@ class Muchedumbre(Asoma):
 # Asnos que asoman y se ríen
 # ============================================================================
 
-def dibujar_asno(k, risa=0.0, pata=0.0):
-    """Mitad delantera de un ase mallorquí, mirando a la derecha y cortado por el borde
-    izquierdo del lienzo (ver modulos/sprite_asno.py). risa 0..1: carcajada; pata 0..1: pataleo."""
-    return _sprite_asno.dibujar(k, risa, pata, suavizado=2)
+def dibujar_asno(k, risa=0.0):
+    """Cabeza y cuello de un ase mallorquí mirando a la derecha; el cuello llega al borde
+    izquierdo del lienzo (ver modulos/sprite_asno.py). risa 0..1: de serio a carcajada."""
+    return _sprite_asno.dibujar(k, risa, suavizado=2, solo_cabeza=True)
 
 
 class Asnos(Asoma):
     """
-    Dos burros asoman por los lados de la pantalla y se ríen. Asoman de cuerpo
-    entero desde fuera de cuadro (el corte del cuerpo coincide con el borde de
-    la pantalla), plantados en el suelo detrás de las ranas: echan la cabeza
-    hacia atrás, enseñan los dientes, cierran los ojos, patalean y se ríen ("JAJAJAJA!").
+    Dos burros asoman la cabeza por los lados de la pantalla y se ríen a
+    carcajadas ("JAJAJAJA!"). El cuello sale del borde de la pantalla, así que
+    se lee como un burro asomándose desde fuera de cuadro, no como una cabeza
+    suelta. Al reír echan la cabeza atrás, enseñan los dientes, cierran los
+    ojos y bajan las orejas.
     """
-    capa = "fondo"  # detrás de las ranas, en la orilla
-    SUBIR, BAJAR, MIN_ARRIBA, POR_DEFECTO = 0.6, 0.5, 2.0, 3.0
-    ASOMA = 0.8  # parte del lienzo que entra en pantalla
+    capa = "frente"
+    SUBIR, BAJAR, MIN_ARRIBA, POR_DEFECTO = 0.5, 0.45, 2.0, 3.0
 
     def dibujar(self):
-        alto_px = 0.36 * self.H * (0.85 + 0.3 * self.velocidad / 127)
-        k = SS * alto_px / _sprite_asno.ALTO
+        ancho_px = 0.14 * self.W * (0.85 + 0.3 * self.velocidad / 127)
+        k = SS * ancho_px / (_sprite_asno.ANCHO - _sprite_asno.CABEZA_X0)
         self.frames = {}
         for r in range(4):
-            for p in (0, 1):
-                im = _reducir(dibujar_asno(k, r / 3, p))
-                self.frames[(r, p, 1)] = im
-                self.frames[(r, p, -1)] = im.transpose(Image.FLIP_LEFT_RIGHT)
-        self.ancho = self.frames[(0, 0, 1)].width
-        self.alto = self.frames[(0, 0, 1)].height
+            im = _reducir(dibujar_asno(k, r / 3))
+            self.frames[(r, 1)] = im
+            self.frames[(r, -1)] = im.transpose(Image.FLIP_LEFT_RIGHT)
+        self.ancho = self.frames[(0, 1)].width
+        self.alto = self.frames[(0, 1)].height
         tam = int(34 * self.escala * (0.8 + 0.4 * self.velocidad / 127))
-        self.risas = [_texto("JAJAJAJA!", tam, (90, 60, 40), angulo=12), _texto("JA JA JA JA!", tam, (90, 60, 40), angulo=-12)]
-        self.y_suelo = 0.86 * self.H  # a la altura de las ranas, junto a las cañas
+        self.risas = [_texto("JAJAJAJA!", tam, (90, 60, 40), angulo=12),
+                      _texto("JA JA JA JA!", tam, (90, 60, 40), angulo=-12)]
+        self.y = 0.30 * self.H
 
     def sprites(self, t):
         f = self.fuera(t)
@@ -599,22 +599,18 @@ class Asnos(Asoma):
             tt = ta - desfase
             riendo = tt >= 0 and t < self.n_sub + self.n_arriba
             r = int(round((0.5 + 0.5 * math.sin(tt * 0.9)) * 3)) if riendo else 0
-            p = 1 if riendo and math.sin(tt * 0.45 + lado) > 0.5 else 0
-            im = self.frames[(r, p, lado)]
-            # asoma lo justo para enseñar cabeza, cuello y patas sin taparle la cara a la rana;
-            # el resto del cuerpo se queda fuera de cuadro
-            visible = self.ancho * self.ASOMA * f
+            im = self.frames[(r, lado)]
+            # el corte del cuello queda pegado al borde de la pantalla
+            visible = self.ancho * f
             x = int(visible - self.ancho) if lado == 1 else int(self.W - visible)
-            bote = int(abs(math.sin(tt * 0.9)) * 4 * self.escala) if riendo else 0
-            y = int(self.y_suelo - self.alto) - bote
+            bote = int(abs(math.sin(tt * 0.9)) * 6 * self.escala) if riendo else 0
+            y = int(self.y) - bote
             out.append((im, x, y))
             if riendo and (tt // int(self.fps * 0.7)) % 2 == 0:
                 txt = self.risas[0 if lado == 1 else 1]
-                # encima de la cabeza del burro (va en la capa de fondo: así no lo tapa la rana)
-                cabeza_x = x + self.ancho * (0.72 if lado == 1 else 0.28)
-                tx = cabeza_x - txt.width / 2
-                tx = min(max(tx, 4), self.W - txt.width - 4)  # que no se salga de la pantalla
-                out.append((txt, int(tx), int(y - txt.height * 0.9)))
+                cabeza_x = x + self.ancho * (0.6 if lado == 1 else 0.4)
+                tx = min(max(cabeza_x - txt.width / 2, 4), self.W - txt.width - 4)  # sin salirse
+                out.append((txt, int(tx), int(y - txt.height * 0.8)))
         return out
 
     def x_interes(self, t):
