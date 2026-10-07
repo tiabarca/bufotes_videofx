@@ -169,7 +169,11 @@ def payes_corre(escala, paso=0, arma="cuchillo", suavizado=4):
 def oveja(escala, pasto=0.0, suavizado=4):
     lz = _Lienzo(escala, suavizado, 90, 68)
     dy = 14 * pasto
-    _patas(lz, [(30, 46), (64, 46)], 68, 0, (1, 1), OVEJA_SOMBRA, (5, 4), (60, 54, 50))  # de detrás
+    # pequeño vaivén de las patas (delante y detrás se alternan) en función del
+    # propio ciclo de "pasto": si no, por mucho que avance el rebaño, las
+    # ovejas se deslizan con las cuatro patas siempre clavadas en el mismo sitio
+    osc = 6 * math.sin(2 * math.pi * pasto)
+    _patas(lz, [(30, 46), (64, 46)], 68, osc, (-1, 1), OVEJA_SOMBRA, (5, 4), (60, 54, 50))  # de detrás
     # lana a bultos
     for cx, cy, r in ((26, 36, 14), (40, 28, 14), (56, 28, 14), (66, 38, 12), (44, 42, 16), (30, 46, 10),
                       (58, 46, 10)):
@@ -185,7 +189,7 @@ def oveja(escala, pasto=0.0, suavizado=4):
     lz.elipse(hx + 2, hy - 2, 1.4, 1.2, LINEA, outline=None)  # ojo
     lz.elipse(hx + 10, hy + 5, 1.8, 1.4, (120, 100, 96), outline=None)  # morro
     lz.elipse(hx - 4, hy - 9, 6, 4, OVEJA, outline=OVEJA_SOMBRA, ancho=1.0)  # tupé de lana
-    _patas(lz, [(24, 48), (58, 48)], 68, 0, (1, 1), OVEJA_CARA, (5.5, 4.2), (60, 54, 50))
+    _patas(lz, [(24, 48), (58, 48)], 68, osc, (-1, 1), OVEJA_CARA, (5.5, 4.2), (60, 54, 50))
     if pasto > 0.6:  # hierba en la boca
         lz.linea([(hx + 9, hy + 8), (hx + 13, hy + 12)], (90, 150, 60), 1.2)
     return lz.reducir()
