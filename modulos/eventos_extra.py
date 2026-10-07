@@ -847,6 +847,15 @@ class Cabra(Asoma):
         self.x_lejos = -self.ancho_cabra if self.lado == 1 else self.W + self.ancho_cabra
         self.x_contacto = self.cx - self.lado * (self.ancho_payes * 0.5 + self.ancho_cabra * 0.25)
 
+    def frames_cenit(self):
+        """Fotogramas desde que arranca el evento (t=0) hasta que la coz conecta de
+        verdad (arranca la ventana de impacto, con estallido). La entrada corriendo +
+        el giro + el inicio de la coz tardan bastante más que el genérico SUBIR/2 de
+        AJUSTA_CENIT (pensado para un simple asoma), así que por MIDI el payès se
+        pondría a tocar y la cabra entraría muy por detrás de la nota si se usara
+        esa aproximación: midi.eventos_midi() llama a esto en su lugar cuando existe."""
+        return self.n_sub + self.t_gira_fin + int(self.p_windup * self.dur_kick)
+
     def _cabra_estado(self, ta):
         """(x, fase 0..1, impacto, espejo, ancho_rel) de la cabra, o None si no está en pantalla.
         ancho_rel < 1 durante el giro: se encoge de lado para simular el cambio de cara."""

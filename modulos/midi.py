@@ -293,21 +293,29 @@ def eventos_midi(ruta, fps, W, H, tipos, mapa=None, desfase=0.0, canal=None,
             desconocidos.add(tipo)
             continue
         clase = tipos[tipo]
-        # algunos eventos "asoman" y no están en su momento fuerte (el "zenit") nada
-        # más arrancar, sino a mitad de subir; para esos, la nota marca el zenit, no
-        # el arranque, así que el evento se adelanta la mitad de lo que tarda en subir
-        retroceso = clase.SUBIR / 2 if getattr(clase, "AJUSTA_CENIT", False) else 0.0
-        ini = int(round((nota.inicio + desfase - retroceso) * fps))
-        if ini < 0 or (n_frames is not None and ini >= n_frames):
-            continue
-        fin_activos = [f for f in fin_activos if f > ini]
-        if len(fin_activos) >= max_simultaneos:
-            continue  # demasiados a la vez: se salta para no frenar el render
         ev = clase(W, H, fps, rng)
         ev.velocidad = nota.velocidad
         ev.mantener = max(1, int(round((nota.fin - nota.inicio) * fps)))
         if hasattr(ev, "ajustar_a_nota"):
             ev.ajustar_a_nota()
+        # algunos eventos "asoman" y no están en su momento fuerte (el "zenit") nada
+        # más arrancar, sino más tarde; para esos, la nota marca el zenit, no el
+        # arranque, así que el evento se adelanta lo que haga falta para que encaje.
+        # Si el evento sabe exactamente cuántos fotogramas tarda en llegar a su
+        # momento fuerte (frames_cenit, p. ej. la coz de la cabra) se usa eso; si
+        # no, la aproximación genérica de medio "SUBIR" vale para un simple asoma.
+        if hasattr(ev, "frames_cenit"):
+            retroceso_frames = ev.frames_cenit()
+        elif getattr(clase, "AJUSTA_CENIT", False):
+            retroceso_frames = int(round(clase.SUBIR / 2 * fps))
+        else:
+            retroceso_frames = 0
+        ini = int(round((nota.inicio + desfase) * fps)) - retroceso_frames
+        if ini < 0 or (n_frames is not None and ini >= n_frames):
+            continue
+        fin_activos = [f for f in fin_activos if f > ini]
+        if len(fin_activos) >= max_simultaneos:
+            continue  # demasiados a la vez: se salta para no frenar el render
         agenda.append((ini, ev))
         fin_activos.append(ini + ev.duracion)
         usados[nota.nombre] = tipo
