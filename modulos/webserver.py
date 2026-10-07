@@ -75,7 +75,7 @@ def _construir_comando(d):
     simples = (
         ("ancho", "--ancho"), ("alto", "--alto"), ("fps", "--fps"), ("duracion", "--duracion"),
         ("sensibilidad", "--sensibilidad"), ("antisangrado", "--antisangrado"),
-        ("tamano_ranas", "--tamano-ranas"), ("eventos_cada", "--eventos-cada"),
+        ("tamano_ranas", "--tamano-ranas"), ("inquietud", "--inquietud"), ("eventos_cada", "--eventos-cada"),
         ("midi_mapa", "--midi-mapa"), ("midi_desfase", "--midi-desfase"), ("midi_canal", "--midi-canal"),
         ("midi_tempo", "--midi-tempo"),
         ("semilla", "--semilla"), ("titulo_duracion", "--titulo-duracion"),
@@ -316,6 +316,7 @@ PAGINA = r"""<!doctype html>
       <div class="campo"><label>Accesorio B</label>
         <select id="acc_b"><option value="gafas" selected>gafas</option><option value="sombrero">sombrero</option><option value="nada">nada</option></select></div>
       <div class="campo"><label>Tamaño ranas</label><input type="number" id="tamano_ranas" value="0.8" step="0.05"></div>
+      <div class="campo"><label>Inquietud ranas</label><input type="number" id="inquietud" value="1" step="0.25" min="0" title="0 = solo respiran; 2 = se mueven el doble en sus silencios"></div>
       <div class="campo"><label>Carpeta --assets</label><input type="text" id="assets" placeholder="sprites_editables"></div>
     </div>
   </fieldset>
@@ -432,6 +433,7 @@ function recogerFormulario(umbralA, umbralB) {
     eventos_cada: num('eventos_cada'),
     accesorios: [document.getElementById('acc_a').value, document.getElementById('acc_b').value],
     tamano_ranas: num('tamano_ranas'),
+    inquietud: num('inquietud'),
     assets: document.getElementById('assets').value || null,
     midi_mapa: document.getElementById('midi_mapa').value || null,
     midi_desfase: num('midi_desfase'),

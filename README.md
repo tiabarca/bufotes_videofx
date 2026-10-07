@@ -84,6 +84,7 @@ python ranas.py --a audio/A.mp3 --b audio/B.mp3 --mezcla audio/master.mp3 --umbr
 | `--semilla 42` | Repite exactamente el mismo orden de eventos. |
 | `--accesorios sombrero gafas` | Accesorio de cada rana: `sombrero`, `gafas` o `nada`. |
 | `--tamano-ranas 0.8` | Tamaño de las ranas. |
+| `--inquietud 1` | Cuánto se mueven las ranas en sus silencios (cambian de postura, se ladean, se estiran, miran alrededor y dan saltitos por el nenúfar). 0 = solo respiran. |
 | `--titulo "Bufotes Episodio 94"` | Título de entrada: aparece justo tras la portada, con la tipografía del logo. |
 | `--titulo-duracion 10` | Cuánto dura en pantalla el título de entrada. |
 | `--sin-logo` | No poner el logo (`media/logo.png`) en la esquina superior izquierda. |
@@ -101,6 +102,8 @@ ranas.py        línea de comandos y render (envía los fotogramas a ffmpeg)
 audio.py        niveles por fotograma, umbrales, anti-sangrado entre micros
 escena.py       fondo: montañas, marjades con olivos, possessió, estanque
 personajes.py   las dos ranas (bocas, parpadeo, mirada, sombrero, gafas)
+sprite_rana.py  dibujo de las ranas (sapo verde balear) y sus posturas
+movimiento.py   gestos de las ranas en sus silencios (posturas, saltitos)
 eventos.py      tractor, cerdo, pájaros, gusano, ovejas, xeremiers, bronca y la programación aleatoria
 eventos_extra.py  ocho eventos más (se registran solos al importar el módulo)
 midi.py         lector de archivos .mid y del mapa nota → evento (midi_mapa.ini)

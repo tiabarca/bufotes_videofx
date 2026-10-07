@@ -35,6 +35,7 @@ from modulos.eventos import SOLAPABLES, TIPOS, programar_eventos
 import modulos.eventos_extra  # noqa: F401  (registra los eventos nuevos en TIPOS)
 from modulos.midi import cargar_mapa, eventos_midi
 from modulos.overlay import cargar_logo, cargar_portada, con_alpha, dibujar_titulo, factor_portada, factor_titulo
+from modulos.movimiento import SIN_MIRADA, planificar as planificar_movimientos
 from modulos.personajes import cargar_sprites
 
 # la consola de Windows usa cp1252 y revienta con caracteres como → o ≈
@@ -106,6 +107,8 @@ def main():
                     choices=["sombrero", "gafas", "nada"], help="Accesorio de cada rana")
     ap.add_argument("--tamano-ranas", type=float, default=0.8, metavar="FACTOR",
                     help="Tamaño de las ranas (1.0 = el original, más grandes)")
+    ap.add_argument("--inquietud", type=float, default=1.0, metavar="FACTOR",
+                    help="Cuánto se mueven las ranas en sus silencios (0 = solo respiran, 2 = el doble)")
     ap.add_argument("--eventos", nargs="*", default=list(TIPOS), choices=list(TIPOS),
                     help="Qué puede pasar por la escena (por defecto todos). Sin valores: ninguno")
     ap.add_argument("--eventos-cada", type=float, default=25.0, metavar="SEG",
@@ -244,24 +247,35 @@ def main():
 
     # sprites de rana ya transformados (respiración); el fondo entero no se
     # puede cachear por estado porque nubes/cañas/reflejos cambian en cada fotograma
-    cache_rana = LRU(400)
+    cache_rana = LRU(600)
 
-    def sprite_rana(r, b, ojos, mira, resp):
-        clave = (r, b, ojos, mira, resp)
-        spr = cache_rana.get(clave)
-        if spr is None:
-            spr = sprites[r][(b, ojos, mira)]
+    def sprite_rana(r, b, ojos, mira, resp, postura, ladeo):
+        """Sprite listo para pegar y el desplazamiento (x, y) de su esquina respecto a los pies."""
+        clave = (r, b, ojos, mira, resp, postura, ladeo)
+        hecho = cache_rana.get(clave)
+        if hecho is None:
+            spr = sprites[r][(b, ojos, mira, postura)]
             if resp:  # respiración: estirar un poco en vertical
                 spr = spr.resize((spr.width, int(spr.height * (1 + 0.015 * resp))), Image.BILINEAR)
-            cache_rana.put(clave, spr)
-        return spr
+            ox, oy = -spr.width // 2, -spr.height
+            if ladeo:
+                # girar sobre los pies: se amplía el lienzo para que no se corte nada
+                s = math.sin(math.radians(abs(ladeo)))
+                mx, my = int(spr.height * s) + 2, int(spr.width * s / 2) + 2
+                lienzo = Image.new("RGBA", (spr.width + 2 * mx, spr.height + my), (0, 0, 0, 0))
+                lienzo.paste(spr, (mx, 0))
+                spr = lienzo.rotate(ladeo, resample=Image.BICUBIC, center=(mx + spr.width / 2, spr.height))
+                ox, oy = ox - mx, oy
+            hecho = (spr, ox, oy)
+            cache_rana.put(clave, hecho)
+        return hecho
 
     def pegar_ranas(img, estado):
         for r in (0, 1):
-            b, ojos, mira, bote, resp = estado[r]
-            spr = sprite_rana(r, b, ojos, mira, resp)
-            x = anclas[r][0] - spr.width // 2
-            y = anclas[r][1] - spr.height - int(bote * 4 * escala)
+            b, ojos, mira, bote, resp, postura, ladeo, dx, alto = estado[r]
+            spr, ox, oy = sprite_rana(r, b, ojos, mira, resp, postura, ladeo)
+            x = anclas[r][0] + int(dx) + ox
+            y = anclas[r][1] + oy - int(bote * 4 * escala) - int(alto)
             img.paste(spr, (x, y), spr)
 
     def componer(i, estado, activos):
@@ -325,6 +339,17 @@ def main():
     flog = open(log_ffmpeg, "w", encoding="utf-8", errors="replace")
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=flog)
     periodo_resp = [3.6 * fps, 4.1 * fps]
+
+    # gestos en los silencios de cada rana (cambiar de postura, ladearse,
+    # estirarse, mirar alrededor, saltar a otro punto del nenúfar); antes de
+    # un evento que va a por una rana en concreto, esa rana vuelve a su sitio
+    movs = []
+    for r in (0, 1):
+        bloqueos = [(ini, ini + ev.duracion) for ini, ev in agenda
+                    if getattr(ev, "objetivo", None) == r or getattr(ev, "rana", None) == r]
+        movs.append(planificar_movimientos(boca[r], fps, W, H, semilla + 70 + r, bloqueos,
+                                           hacia_fuera=-1 if r == 0 else 1, escala=escala,
+                                           inquietud=args.inquietud))
     margen_mirada = 0.06 * W
     try:
         for i in range(n):
@@ -355,16 +380,23 @@ def main():
                     b = boca_forzada[1]
                 bote = BOTE_POR_BOCA[b]
                 resp = round((math.sin(2 * math.pi * i / periodo_resp[r]) + 1) * 1.5)  # 0..3
+                m_dx, m_alto, m_post, m_lad, m_mira = movs[r]
                 if x_ev is not None and -0.05 * W < x_ev < 1.05 * W:
-                    dx = x_ev - anclas[r][0]  # las dos miran lo que pasa
+                    dx = x_ev - anclas[r][0] - m_dx[i]  # las dos miran lo que pasa
                     mira = 0 if abs(dx) < margen_mirada else (1 if dx > 0 else -1)
+                elif m_mira[i] != SIN_MIRADA:
+                    mira = int(m_mira[i])  # gesto propio (mirar alrededor, hacia dónde salta)
                 else:
                     mira = 1 if r == 0 else -1  # se miran entre ellas
                 ojos = not parpadeo[r][i]
                 for ef in efectos.get(r, ()):
                     bote = max(bote, ef.get("bote", 0))
                     ojos = ojos and ef.get("ojos", True)
-                estado.append((b, ojos, mira, bote, resp))
+                postura = int(m_post[i])
+                if b and postura == 3:
+                    postura = 0  # si se arranca a hablar, deja de estirarse
+                estado.append((b, ojos, mira, bote, resp, postura, int(m_lad[i]),
+                               float(m_dx[i]), float(m_alto[i])))
             try:
                 proc.stdin.write(componer(i, tuple(estado), activos))
             except (BrokenPipeError, OSError):
