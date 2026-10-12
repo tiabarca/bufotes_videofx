@@ -5,6 +5,9 @@ import os
 from PIL import Image
 
 from . import sprite_rana as _sprite_rana
+from . import sprite_rana_antigua as _sprite_rana_antigua
+
+TIPOS_RANA = {"nueva": _sprite_rana, "oldversion": _sprite_rana_antigua}
 
 #   0 cerrada · 1 vocal pequeña redonda · 2 vocal pequeña ancha
 #   3 vocal grande redonda · 4 vocal grande ancha · 5 oclusiva · 6 grito
@@ -27,14 +30,15 @@ def _lienzo(escala):
     return S, int((360 + OY) * k), k
 
 
-def rana_generada(color, boca, ojos_abiertos, escala=1.0, mirando=1, accesorio=None, postura=0):
+def rana_generada(color, boca, ojos_abiertos, escala=1.0, mirando=1, accesorio=None, postura=0, tipo="nueva"):
     """
     Dibuja una rana (sapo verde balear, ver modulos/sprite_rana.py).
     boca: 0-6 (ver GEOM_BOCA), ojos_abiertos: bool, mirando: 1 derecha /
     -1 izquierda / 0 al frente, accesorio: None, "sombrero" o "gafas",
     postura: 0 sentada, 1 agachada, 2 en el aire, 3 erguida.
+    tipo: "nueva" o "oldversion" (ver modulos/sprite_rana_antigua.py).
     """
-    return _sprite_rana.dibujar(color, boca, ojos_abiertos, escala, mirando, accesorio, postura, GEOM_BOCA)
+    return TIPOS_RANA[tipo].dibujar(color, boca, ojos_abiertos, escala, mirando, accesorio, postura, GEOM_BOCA)
 
 
 # si no hay PNG propio, las posturas se simulan deformando el PNG de la
@@ -67,8 +71,9 @@ class _SpritesRana(dict):
     Clave (boca, ojos_abiertos, mirada) o (boca, ojos_abiertos, mirada, postura).
     """
 
-    def __init__(self, assets, nombre, color, escala, accesorio):
+    def __init__(self, assets, nombre, color, escala, accesorio, tipo="nueva"):
         super().__init__()
+        self.tipo = tipo
         self.assets, self.nombre, self.color = assets, nombre, color
         self.escala, self.accesorio = escala, accesorio
         self.tamano = _lienzo(escala)[:2]  # (ancho, alto) exactos, sea cual sea la resolución del PNG
@@ -87,7 +92,7 @@ class _SpritesRana(dict):
                 fx, fy = DEFORMA_POSTURA.get(postura, (1, 1))
                 im = im.resize((int(im.width * fx), int(im.height * fy)), Image.LANCZOS)
         else:
-            im = rana_generada(self.color, boca, ojos, self.escala, mira, self.accesorio, postura)
+            im = rana_generada(self.color, boca, ojos, self.escala, mira, self.accesorio, postura, self.tipo)
         self[clave] = im
         return im
 
@@ -95,7 +100,7 @@ class _SpritesRana(dict):
         return _ruta_boca(self.assets, self.nombre, boca)
 
 
-def cargar_sprites(assets, colores, escala, accesorios=("sombrero", "gafas")):
+def cargar_sprites(assets, colores, escala, accesorios=("sombrero", "gafas"), tipo="nueva"):
     """
     Devuelve sprites[rana][(boca, ojos_abiertos, mirada[, postura])] -> RGBA.
 
@@ -109,5 +114,5 @@ def cargar_sprites(assets, colores, escala, accesorios=("sombrero", "gafas")):
     boca3.png..boca6.png (ver GEOM_BOCA); si no existen, se reutiliza el PNG
     clásico más parecido. Los sprites se generan la primera vez que se piden.
     """
-    return {r: _SpritesRana(assets, nombre, colores[r], escala, accesorios[r])
+    return {r: _SpritesRana(assets, nombre, colores[r], escala, accesorios[r], tipo)
             for r, nombre in enumerate("AB")}

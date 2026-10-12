@@ -22,7 +22,7 @@ en el borde inferior), así que el resto del programa no cambia.
 import math
 import random
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw
 
 OY = 120                 # margen superior para el sombrero (igual que personajes.OY)
 ANCHO, ALTO = 360, 360 + OY
@@ -259,9 +259,9 @@ def dibujar(color, boca, ojos_abiertos, escala=1.0, mirando=1, accesorio=None, p
 
     def deco_cuerpo(d):
         r = random.Random(semilla + 1)
-        # sombra del lomo hacia los lados
-        for s in (-1, 1):
-            lz.poli(_elipse(180 + s * 112 * sx, cuerpo[1] + 10, 30 * sx, 80 * sy), piel_sombra, None, d=d)
+        if not muslos:  # sin muslos aparte (en el aire), sugiere el bulto del costado
+            for s in (-1, 1):
+                lz.poli(_elipse(180 + s * 112 * sx, cuerpo[1] + 10, 30 * sx, 80 * sy), piel_sombra, None, d=d)
         _manchas(lz, d, r, zona_cuerpo, 13, mancha, 15, 27)
         _manchas(lz, d, r, zona_cab, 8, mancha, 10, 17,
                  evitar=[(x, y, 42, 40) for x, y in ojos] + [boca_zona, (180, ojos[0][1] + 20, 26, 30)])
@@ -283,19 +283,23 @@ def dibujar(color, boca, ojos_abiertos, escala=1.0, mirando=1, accesorio=None, p
             for j in range(4):
                 lz.punto(gx + s * (j - 1.5) * 3, gy - 18 + j * 11, 1.6, _oscurecer(piel, 0.6), d)
 
-    lz.grupo([_elipse(*cuerpo), _elipse(*cabeza)], piel, deco_cuerpo)
+    # los muslos entran en la misma pieza que cuerpo+cabeza: un solo contorno,
+    # sin la costura de "globo pegado" que salía al dibujarlos aparte encima
+    def deco_muslos(d):
+        r = random.Random(semilla + 2)
+        for s in (-1, 1):
+            mx, my = 180 + s * 106 * sx, SUELO - 40 * sy - 4
+            for j in range(3):
+                lz.poli(_mancha(r, mx + s * (j - 1) * 30, my + r.uniform(-10, 8), r.uniform(10, 14)),
+                        mancha, _oscurecer(mancha, 0.55), 1.4, d)
+            _verrugas(lz, d, r, (mx, my, 48 * sx, 32 * sy), 6, piel, rmin=1.8, rmax=3.2)
 
-    # --- muslos (sentada): encima del costado, con sus manchas
-    if muslos:
-        def deco_muslos(d):
-            r = random.Random(semilla + 2)
-            for s in (-1, 1):
-                mx, my = 180 + s * 106 * sx, SUELO - 40 * sy - 4
-                for j in range(3):
-                    lz.poli(_mancha(r, mx + s * (j - 1) * 30, my + r.uniform(-10, 8), r.uniform(10, 14)),
-                            mancha, _oscurecer(mancha, 0.55), 1.4, d)
-                _verrugas(lz, d, r, (mx, my, 48 * sx, 32 * sy), 6, piel, rmin=1.8, rmax=3.2)
-        lz.grupo(muslos, piel, deco_muslos)
+    def deco_cuerpo_y_muslos(d):
+        deco_cuerpo(d)
+        if muslos:
+            deco_muslos(d)
+
+    lz.grupo([_elipse(*cuerpo), _elipse(*cabeza)] + muslos, piel, deco_cuerpo_y_muslos)
 
     # --- brazos delanteros, por delante de la barriga
     brazos = []
@@ -381,25 +385,43 @@ def dibujar(color, boca, ojos_abiertos, escala=1.0, mirando=1, accesorio=None, p
     for nx in (166, 194):
         lz.punto(nx, 130 + cab, 2.8, LINEA)
 
-    # --- boca
+    # --- boca: las comisuras son siempre las mismas del reposo y la boca se abre
+    # desde ellas (labio superior casi recto, mandíbula curva), sin dejar
+    # sobrar la línea de la sonrisa a los lados
     yb = 170 + cab
+    izq, der = (74, yb - 6), (286, yb - 6)
+
+    def comisuras(a, b):
+        lz.linea(_curva((a[0] - 8, a[1] - 8), (a[0] - 4, a[1] + 2), (a[0] + 6, a[1] + 2)), LINEA, 2.6)
+        lz.linea(_curva((b[0] + 8, b[1] - 8), (b[0] + 4, b[1] + 2), (b[0] - 6, b[1] + 2)), LINEA, 2.6)
+
     if boca == 0:
-        lz.linea(_curva((74, yb - 6), (180, yb + 26), (286, yb - 6)), LINEA, 3.4)
-        lz.linea(_curva((66, yb - 14), (70, yb - 4), (80, yb - 4)), LINEA, 2.6)   # comisuras
-        lz.linea(_curva((294, yb - 14), (290, yb - 4), (280, yb - 4)), LINEA, 2.6)
-    elif boca == 5:  # oclusiva: labios apretados
-        lz.linea(_curva((80, yb - 4), (180, yb + 16), (280, yb - 4)), LINEA, 5)
-        lz.poli([(130, yb + 4), (230, yb + 4), (226, yb + 16), (134, yb + 16)], BOCA_DENTRO, LINEA, 2.0)
-        lz.linea([(138, yb + 10), (222, yb + 10)], (70, 15, 20), 1.6)
+        lz.linea(_curva(izq, (180, yb + 26), der), LINEA, 3.4)
+        comisuras(izq, der)
     else:
-        x0, x1, alto = geom_boca[boca]
-        cx = (x0 + x1) / 2
-        rx, ry = (x1 - x0) / 2, alto / 2
-        lz.linea(_curva((74, yb - 6), (cx, yb + 4), (x0 + 6, yb + 2)), LINEA, 3)
-        lz.linea(_curva((x1 - 6, yb + 2), (cx, yb + 4), (286, yb - 6)), LINEA, 3)
-        lz.poli(_elipse(cx, yb + ry, rx, ry), BOCA_DENTRO, LINEA, 2.6)
-        lz.poli(_elipse(cx, yb + alto * 0.72, min(rx * 0.55, 34), alto * 0.24), LENGUA, None)
-        lz.linea([(x0 + 10, yb + 3), (x1 - 10, yb + 3)], _mezcla(piel, LINEA, 0.4), 2)  # labio
+        if boca == 5:  # oclusiva: labios apretados, apenas una rendija
+            a, b, alto = (78, yb - 4), (282, yb - 4), 8
+        else:
+            x0, x1, alto = geom_boca[boca]
+            # las vocales redondas recogen las comisuras, las anchas las estiran
+            a = (74 + (x0 - 74) * 0.6, yb - 3)
+            b = (286 + (x1 - 286) * 0.6, yb - 3)
+        cx = (a[0] + b[0]) / 2
+        sup = _curva(a, (cx, yb - 1), b)
+        inf = _curva(b, (cx, yb - 4 + 2 * alto), a)
+        boca_pts = sup + inf[1:-1]
+        lz.poli(boca_pts, BOCA_DENTRO, LINEA, 2.8)
+        if boca != 5:
+            capa = Image.new("RGBA", lz.tam, (0, 0, 0, 0))
+            lz.poli(_elipse(cx, yb + alto * 0.8, min((b[0] - a[0]) * 0.22, 40), alto * 0.3), LENGUA, None,
+                    d=ImageDraw.Draw(capa))
+            mascara = Image.new("L", lz.tam, 0)
+            ImageDraw.Draw(mascara).polygon(lz.q(boca_pts), fill=255)
+            capa.putalpha(ImageChops.multiply(capa.getchannel("A"), mascara))
+            lz.img.alpha_composite(capa)
+            lz.d = ImageDraw.Draw(lz.img)
+        lz.linea(sup, LINEA, 3)
+        comisuras(a, b)
     return lz.reducir()
 
 

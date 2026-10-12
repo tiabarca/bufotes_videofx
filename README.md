@@ -84,6 +84,7 @@ python ranas.py --a audio/A.mp3 --b audio/B.mp3 --mezcla audio/master.mp3 --umbr
 | `--semilla 42` | Repite exactamente el mismo orden de eventos. |
 | `--accesorios sombrero gafas` | Accesorio de cada rana: `sombrero`, `gafas` o `nada`. |
 | `--tamano-ranas 0.8` | Tamaño de las ranas. |
+| `--tiporana oldversion` | Aspecto de las ranas: `nueva` (por defecto, sapo verde balear con manchas) u `oldversion` (la versión lisa antigua, en `modulos/sprite_rana_antigua.py`). |
 | `--inquietud 1` | Cuánto se mueven las ranas en sus silencios (cambian de postura, se ladean, se estiran, miran alrededor y dan saltitos por el nenúfar). 0 = solo respiran. |
 | `--titulo "Bufotes Episodio 94"` | Título de entrada: aparece justo tras la portada, con la tipografía del logo. |
 | `--titulo-duracion 10` | Cuánto dura en pantalla el título de entrada. |

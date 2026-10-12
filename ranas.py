@@ -63,9 +63,15 @@ class LRU(OrderedDict):
             self.popitem(last=False)
 
 
-# rebote vertical según el estado de boca (ver GEOM_BOCA en personajes.py);
-# el grito (6) salta mucho más, para que se note que la rana está exaltada
-BOTE_POR_BOCA = {0: 0, 1: 1, 2: 1, 3: 2, 4: 2, 5: 2, 6: 6}
+# al hablar, la rana no salta: solo el grito (6) la hace botar, para que se
+# note que está exaltada. El resto de estados hablados se resuelven como
+# estiramiento (ver ESTIRAMIENTO_POR_BOCA más abajo), no como salto.
+BOTE_POR_BOCA = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 6}
+
+# estiramiento vertical (como la respiración, pero por hablar): más para las
+# vocales grandes, poco para las pequeñas y las oclusivas, nada en reposo.
+# El grito ya bota mucho (arriba), así que no necesita estirarse además.
+ESTIRAMIENTO_POR_BOCA = {0: 0.0, 1: 0.012, 2: 0.012, 3: 0.03, 4: 0.03, 5: 0.008, 6: 0.0}
 
 
 def horario_parpadeos(n, fps, semilla):
@@ -107,6 +113,8 @@ def main():
                     choices=["sombrero", "gafas", "nada"], help="Accesorio de cada rana")
     ap.add_argument("--tamano-ranas", type=float, default=0.8, metavar="FACTOR",
                     help="Tamaño de las ranas (1.0 = el original, más grandes)")
+    ap.add_argument("--tiporana", choices=("nueva", "oldversion"), default="nueva",
+                    help="Aspecto de las ranas: nueva (sapo verde balear con manchas) u oldversion (la versión lisa antigua)")
     ap.add_argument("--inquietud", type=float, default=1.0, metavar="FACTOR",
                     help="Cuánto se mueven las ranas en sus silencios (0 = solo respiran, 2 = el doble)")
     ap.add_argument("--eventos", nargs="*", default=list(TIPOS), choices=list(TIPOS),
@@ -190,7 +198,8 @@ def main():
     else:
         fondo = fondo_mallorquin(W, H)
     accs = [None if a == "nada" else a for a in args.accesorios]
-    sprites = cargar_sprites(args.assets, [(95, 170, 80), (150, 185, 60)], escala * args.tamano_ranas, accs)
+    sprites = cargar_sprites(args.assets, [(95, 170, 80), (150, 185, 60)], escala * args.tamano_ranas, accs,
+                             args.tiporana)
     anclas = [(int(W * X_RANAS[0]), int(H * 0.86)), (int(W * X_RANAS[1]), int(H * 0.86))]
 
     nubes = Nubes(n, fps, W, H, semilla)
@@ -255,8 +264,9 @@ def main():
         hecho = cache_rana.get(clave)
         if hecho is None:
             spr = sprites[r][(b, ojos, mira, postura)]
-            if resp:  # respiración: estirar un poco en vertical
-                spr = spr.resize((spr.width, int(spr.height * (1 + 0.015 * resp))), Image.BILINEAR)
+            estir = 0.015 * resp + ESTIRAMIENTO_POR_BOCA[b]  # respiración + hablar, estirado desde los pies
+            if estir:
+                spr = spr.resize((spr.width, int(spr.height * (1 + estir))), Image.BILINEAR)
             ox, oy = -spr.width // 2, -spr.height
             if ladeo:
                 # girar sobre los pies: se amplía el lienzo para que no se corte nada
